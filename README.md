@@ -48,18 +48,24 @@ Adding a new reviewer (Qwen, Mistral, a local `llama.cpp` process, ...) is a one
 
 ### As a Claude Code plugin
 
+From any Claude Code session, register this repo as a marketplace and install the plugin:
+
+```
+/plugin marketplace add https://github.com/formin/multi-model-review
+/plugin install spec-cross-review@multi-model-review
+```
+
+Run the commands from inside a project directory if you want the registration scoped to that project (written to the project's `.claude/settings.json`).
+
+To develop against a local clone:
+
 ```bash
-git clone https://github.com/formin/multi-model-review.git \
-  ~/.claude/plugins/local/multi-model-review
+git clone https://github.com/formin/multi-model-review.git
+cd multi-model-review
+claude --plugin-dir .
 ```
 
-Then, in Claude Code:
-
-```
-/plugin
-```
-
-Point the plugin UI at the cloned path, or add a marketplace entry referencing this repo.
+After editing plugin files, run `/reload-plugins` inside Claude Code to pick up changes.
 
 ### As a standalone skill (minimal)
 
