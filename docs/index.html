@@ -177,18 +177,16 @@
       <h2>Install</h2>
       <p><strong>Slash commands (<code>/plugin …</code>) are typed inside a Claude Code session — not at your OS shell.</strong> Running them at PowerShell or bash returns <code>'/plugin' is not recognized</code>. Shell commands (<code>claude …</code>, <code>git …</code>) go at your OS shell.</p>
       <p>In a Claude Code session:</p>
-      <pre><code>/plugin marketplace add https://github.com/formin/multi-model-review
-/plugin install spec-cross-review@multi-model-review</code></pre>
+      <pre><code>/plugin install spec-cross-review@multi-model-review</code></pre>
       <p>Or at your OS shell (equivalent):</p>
-      <pre><code>claude plugin marketplace add https://github.com/formin/multi-model-review
-claude plugin install spec-cross-review@multi-model-review
+      <pre><code>claude plugin install spec-cross-review@multi-model-review
 claude plugin list</code></pre>
-      <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list. Default scope is <code>user</code>; add <code>--scope project</code> to restrict to one project.</p>
+      <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list.</p>
       <h3>Update or reinstall</h3>
       <ul>
         <li>Update (in Claude Code): <code>/plugin update spec-cross-review@multi-model-review</code> — or at your shell: <code>claude plugin update spec-cross-review@multi-model-review</code>.</li>
         <li>Uninstall (in Claude Code): <code>/plugin uninstall spec-cross-review@multi-model-review</code></li>
-        <li>Full wipe and reinstall: see <a href="https://github.com/formin/multi-model-review#update--reinstall">README — Update / reinstall</a>.</li>
+        <li>For a clean reinstall, uninstall then install again.</li>
         <li>Dev-mode (<code>claude --plugin-dir</code>) clone already exists? At the shell, <code>git pull</code> inside it, or delete the directory (<code>Remove-Item -Recurse -Force</code> on PowerShell / <code>rm -rf</code> elsewhere) and re-clone.</li>
       </ul>
     </section>

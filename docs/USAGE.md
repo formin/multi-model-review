@@ -18,21 +18,17 @@ Step-by-step walkthrough for `multi-model-review`.
 See [README.md](../README.md#install). The shortest path — inside any Claude Code session:
 
 ```
-/plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review
 ```
 
 Or at your OS shell (equivalent):
 
 ```bash
-claude plugin marketplace add https://github.com/formin/multi-model-review
 claude plugin install spec-cross-review@multi-model-review
 claude plugin list          # verify "Status: enabled"
 ```
 
 `/reload-plugins` or restart Claude Code. `/multi-model-review` should now appear in the slash-command list.
-
-Both commands default to `--scope user` (plugin available in every project). Add `--scope project` to restrict to one project — the registration is written to `<project>/.claude/settings.json` instead.
 
 ### Updating, reinstalling, starting over
 
@@ -40,7 +36,6 @@ Both commands default to `--scope user` (plugin available in every project). Add
 
 - **Update** to the latest version — in Claude Code: `/plugin update spec-cross-review@multi-model-review`. Or at the shell: `claude plugin update spec-cross-review@multi-model-review`.
 - **Uninstall** — in Claude Code: `/plugin uninstall spec-cross-review@multi-model-review`.
-- **Full reinstall from scratch**: see [README — Update / reinstall](../README.md#update--reinstall) and [Starting over from a corrupted state](../README.md#starting-over-from-a-corrupted-state).
 - **Dev mode (`claude --plugin-dir`)**: at the shell, `git pull` inside your clone. If `git clone` fails with `destination path already exists`, either delete the existing directory (`rm -rf multi-model-review` / `Remove-Item -Recurse -Force multi-model-review` on PowerShell) or `git pull` in place.
 
 ## 2. Initialize a project

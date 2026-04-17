@@ -50,46 +50,20 @@ Adding a new reviewer (Qwen, Mistral, a local `llama.cpp` process, ...) is a one
 
 ### As a Claude Code plugin
 
-Install via in-session slash commands **or** via the `claude` CLI at your OS shell. Both forms are equivalent.
-
 In a Claude Code session:
 
 ```
-/plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review
 ```
 
-Or at your OS shell:
+Or at your OS shell (equivalent):
 
 ```bash
-claude plugin marketplace add https://github.com/formin/multi-model-review
 claude plugin install spec-cross-review@multi-model-review
+claude plugin list      # verify "Status: enabled"
 ```
 
-Verify the install:
-
-```bash
-claude plugin list
-```
-
-Expected output includes `spec-cross-review@multi-model-review` with `Status: enabled`. Then run `/reload-plugins` inside Claude Code (or restart it) and `/multi-model-review` will appear in the slash-command picker.
-
-#### Install scope
-
-`marketplace add` and `install` accept `--scope <user|project|local>`. Default is `user` — the plugin becomes available across every project you open. The three scopes write to different settings files:
-
-| Scope     | Settings file                          |
-|-----------|----------------------------------------|
-| `user`    | `~/.claude/settings.json`              |
-| `project` | `<project>/.claude/settings.json`      |
-| `local`   | `<project>/.claude/settings.local.json`|
-
-To restrict to a single project (commit `<project>/.claude/settings.json` so the team sees it):
-
-```bash
-claude plugin marketplace add https://github.com/formin/multi-model-review --scope project
-claude plugin install spec-cross-review@multi-model-review --scope project
-```
+Then run `/reload-plugins` inside Claude Code (or restart it) and `/multi-model-review` will appear in the slash-command picker.
 
 ### Develop against a local clone
 
@@ -128,20 +102,13 @@ Or at your OS shell (outside Claude Code), the equivalent CLI subcommand:
 claude plugin update spec-cross-review@multi-model-review
 ```
 
-Uninstall the plugin while keeping the marketplace registered (in a Claude Code session):
+Uninstall the plugin (in a Claude Code session):
 
 ```
 /plugin uninstall spec-cross-review@multi-model-review
 ```
 
-Force a clean reinstall — uninstall, re-register the marketplace, reinstall (in a Claude Code session):
-
-```
-/plugin uninstall spec-cross-review@multi-model-review
-/plugin marketplace remove multi-model-review
-/plugin marketplace add https://github.com/formin/multi-model-review
-/plugin install spec-cross-review@multi-model-review
-```
+For a clean reinstall, uninstall and then install again.
 
 In development mode (you cloned the repo and ran `claude --plugin-dir .`), update with `git pull` at your OS shell from inside the clone — no reinstall needed. If you see `fatal: destination path 'multi-model-review' already exists` when re-cloning, delete the existing directory first or pull in place:
 
@@ -160,13 +127,13 @@ cd multi-model-review && git pull
 
 ### Starting over from a corrupted state
 
-If the install is partially broken (stale marketplace path, install didn't complete, you renamed the clone directory):
+If the install is partially broken (install didn't complete, you renamed the clone directory):
 
-1. In Claude Code: `/plugin uninstall spec-cross-review@multi-model-review` then `/plugin marketplace remove multi-model-review`.
+1. In Claude Code: `/plugin uninstall spec-cross-review@multi-model-review`.
 2. Exit Claude Code.
-3. Inspect `~/.claude/plugins/`. If `installed_plugins.json` or `known_marketplaces.json` still have stale entries, hand-edit them out.
+3. If `~/.claude/plugins/installed_plugins.json` still has a stale entry for this plugin, hand-edit it out.
 4. Delete any local clone directory if you used `--plugin-dir`.
-5. Restart Claude Code and re-run the install commands from the top of this section.
+5. Restart Claude Code and reinstall.
 
 ## Quick start
 
