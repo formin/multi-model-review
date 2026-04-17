@@ -1,0 +1,19 @@
+{
+  "name": "spec-cross-review",
+  "description": "Cross-agent code review workflow for Spec-Driven Development. Build with one agent (Claude/Codex), review with the other, using portable spec-kit artifacts as the handoff surface.",
+  "version": "0.1.0",
+  "author": {
+    "name": "formin",
+    "url": "https://github.com/formin"
+  },
+  "homepage": "https://github.com/formin/spec-cross-review",
+  "license": "MIT",
+  "keywords": [
+    "spec-kit",
+    "spec-driven-development",
+    "code-review",
+    "claude-code",
+    "codex",
+    "cross-agent"
+  ]
+}

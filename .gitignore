@@ -1,0 +1,14 @@
+# Project-local handoff state (users may choose to commit this — opt-in)
+.cross-review/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python (in case users add tooling later)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
