@@ -17,9 +17,9 @@ A single LLM reviewing its own output tends to rationalize rather than challenge
 Spec Kit itself is great at orchestrating **one** agent through `specify → plan → tasks → implement`. It does not prescribe a cross-model review loop. `multi-model-review` fills that gap:
 
 - The builder model does `implement`.
-- `/review-package` bundles the spec, plan, tasks, diff, and project rules (`CLAUDE.md`) into a self-contained prompt for the reviewer.
+- `/multi-model-review --review-package` bundles the spec, plan, tasks, diff, and project rules (`CLAUDE.md`) into a self-contained prompt for the reviewer.
 - You run the reviewer model on that file.
-- `/apply-review` ingests the reviewer's report and walks you through fixes.
+- `/multi-model-review --apply-review` ingests the reviewer's report and walks you through fixes.
 
 Because the bundle is just markdown, any LLM with a CLI (or an API) can play reviewer. Swap models freely — even run the same diff past two different reviewers for triangulation.
 
@@ -74,18 +74,18 @@ If you don't want the full plugin:
 ```bash
 mkdir -p ~/.claude/skills
 cp -r skills/cross-review ~/.claude/skills/
-cp -r commands/* ~/.claude/commands/     # optional: slash commands
 cp -r templates ~/.claude/skills/cross-review/
+cp commands/multi-model-review.md ~/.claude/commands/     # optional: /multi-model-review slash command
 ```
 
-The skill activates on phrases like "review with Codex", "review with Gemini", "cross-review", or when you type `/cross-review`.
+The skill activates on phrases like "review with Codex", "review with Gemini", "cross-review", or when you type `/multi-model-review`.
 
 ## Quick start
 
 From inside a repo with a feature branch checked out:
 
 ```
-/cross-review init
+/multi-model-review --cross-review init
 ```
 
 Answers: `builder = claude-code`, `reviewer = gemini-cli` (or `codex-cli`, etc.), `base ref = main`.
@@ -93,7 +93,7 @@ Answers: `builder = claude-code`, `reviewer = gemini-cli` (or `codex-cli`, etc.)
 Build your change as you normally would (or via `/speckit.implement`), then:
 
 ```
-/review-package
+/multi-model-review --review-package
 ```
 
 The plugin writes `.cross-review/packages/<timestamp>-<slug>/review-package.md` and prints the exact command to run the reviewer. Example for Gemini:
@@ -106,7 +106,7 @@ gemini --file .cross-review/packages/20260417-1020-auth-rework/review-package.md
 When the reviewer finishes:
 
 ```
-/apply-review
+/multi-model-review --apply-review
 ```
 
 Claude reads the report, filters findings by confidence, and walks you through each one.
@@ -120,15 +120,18 @@ codex  exec --file <pkg>/review-package.md > <pkg>/review-report-codex.md
 gemini --file <pkg>/review-package.md       > <pkg>/review-report-gemini.md
 ```
 
-Then rename one to `review-report.md` and pass the other to `/apply-review <pkg>` manually, or merge the two reports by hand. A built-in multi-reviewer merge is on the roadmap.
+Then rename one to `review-report.md` and pass the other to `/multi-model-review --apply-review <pkg>` manually, or merge the two reports by hand. A built-in multi-reviewer merge is on the roadmap.
 
 ## Commands
 
-| Command           | Purpose                                                     |
-|-------------------|-------------------------------------------------------------|
-| `/cross-review`   | Status / init / route. Entry point.                         |
-| `/review-package` | Export the handoff bundle for the reviewer model.           |
-| `/apply-review`   | Ingest the reviewer's report and drive remediation.         |
+Single entry point with subcommand flags:
+
+| Invocation                                                | Purpose                                                     |
+|-----------------------------------------------------------|-------------------------------------------------------------|
+| `/multi-model-review`                                     | Default — show status (equivalent to `--cross-review`).     |
+| `/multi-model-review --cross-review [init\|status]`        | Init config or show current roles, base ref, and packages.  |
+| `/multi-model-review --review-package [slug] [--base <ref>]` | Export the handoff bundle for the reviewer model.        |
+| `/multi-model-review --apply-review [path] [--min-confidence N]` | Ingest the reviewer's report and drive remediation.  |
 
 Full details in [docs/USAGE.md](docs/USAGE.md).
 
@@ -136,12 +139,12 @@ Full details in [docs/USAGE.md](docs/USAGE.md).
 
 ```
 multi-model-review/
-├── .claude-plugin/plugin.json         # plugin manifest
+├── .claude-plugin/
+│   ├── plugin.json                    # plugin manifest
+│   └── marketplace.json               # single-plugin marketplace catalog
 ├── skills/cross-review/SKILL.md       # the skill (model-invoked)
-├── commands/                          # slash commands (user-invoked)
-│   ├── cross-review.md
-│   ├── review-package.md
-│   └── apply-review.md
+├── commands/
+│   └── multi-model-review.md          # single slash command, dispatches by flag
 ├── templates/                         # reviewer prompts + report schema
 │   ├── codex-review-prompt.md
 │   ├── claude-review-prompt.md
@@ -157,7 +160,7 @@ At runtime, per-project state lives in `.cross-review/` inside your target repo.
 - **No side calls.** The skill never shells out to the reviewer model. You run it yourself. This keeps auth, cost, and rate limits in your hands and avoids coupling the plugin to any one vendor's CLI flags.
 - **Markdown is the only interchange.** The review package and review report are plain markdown files. Version them, diff them, commit them if you want an audit trail.
 - **Confidence-gated.** Findings with `confidence < 70` are hidden by default. The reviewer explicitly scores itself, so you don't drown in nits.
-- **Preserve reviewer language.** During `/apply-review`, the builder quotes the report rather than paraphrasing. Prevents one model from rewriting the other's wording into agreement.
+- **Preserve reviewer language.** During `/multi-model-review --apply-review`, the builder quotes the report rather than paraphrasing. Prevents one model from rewriting the other's wording into agreement.
 - **Template-driven, not hard-coded.** Supporting a new reviewer model = dropping a new markdown template. No code change.
 
 ## Relationship to Spec Kit

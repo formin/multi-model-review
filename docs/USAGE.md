@@ -15,21 +15,21 @@ Step-by-step walkthrough for `multi-model-review`.
 
 ## 1. Install the plugin
 
-See [README.md](../README.md#install). The shortest path:
+See [README.md](../README.md#install). The shortest path, from inside any Claude Code session:
 
-```bash
-git clone https://github.com/formin/multi-model-review.git \
-  ~/.claude/plugins/local/multi-model-review
+```
+/plugin marketplace add https://github.com/formin/multi-model-review
+/plugin install spec-cross-review@multi-model-review
 ```
 
-Restart Claude Code. `/cross-review` should now appear in the slash-command list.
+`/reload-plugins` or restart Claude Code. `/multi-model-review` should now appear in the slash-command list.
 
 ## 2. Initialize a project
 
 In your target repo, from Claude Code:
 
 ```
-/cross-review init
+/multi-model-review --cross-review init
 ```
 
 Answer the prompts:
@@ -68,7 +68,7 @@ Commit your work on a feature branch. The reviewer sees the diff against `base_r
 ## 4. Export the review package
 
 ```
-/review-package
+/multi-model-review --review-package
 ```
 
 Optional arguments:
@@ -117,7 +117,7 @@ The export refuses to run if:
 
 **You** do this, not the plugin. Open a separate terminal. Use one of the commands printed in step 4, matching your configured reviewer.
 
-The template inside the package tells the reviewer to produce output in the schema defined in [templates/review-report.md](../templates/review-report.md). Every supported reviewer template points at the same schema, so the downstream parsing in `/apply-review` is model-agnostic.
+The template inside the package tells the reviewer to produce output in the schema defined in [templates/review-report.md](../templates/review-report.md). Every supported reviewer template points at the same schema, so the downstream parsing in `/multi-model-review --apply-review` is model-agnostic.
 
 ### Multi-reviewer triangulation
 
@@ -131,14 +131,14 @@ claude -p "$(cat <pkg>/review-package.md)"  > <pkg>/review-report-claude.md
 
 Findings that appear in 2+ reports are almost certainly real. Findings unique to one reviewer are where cross-model value lives — but treat them with healthy skepticism.
 
-To ingest one of them, rename it to `review-report.md` before running `/apply-review` (a built-in multi-report merge is on the roadmap).
+To ingest one of them, rename it to `review-report.md` before running `/multi-model-review --apply-review` (a built-in multi-report merge is on the roadmap).
 
 ## 6. Ingest the review
 
 Back in your Claude Code session in the project:
 
 ```
-/apply-review
+/multi-model-review --apply-review
 ```
 
 Optional arguments:
@@ -162,19 +162,19 @@ What happens:
 
 ## 7. Iterate
 
-After applying fixes, commit and run `/review-package` again. Each run creates a new timestamped package, so you keep an audit trail of review rounds. Consider rotating reviewers between rounds — e.g. round 1 reviewed by Codex, round 2 reviewed by Gemini — to surface different classes of issues.
+After applying fixes, commit and run `/multi-model-review --review-package` again. Each run creates a new timestamped package, so you keep an audit trail of review rounds. Consider rotating reviewers between rounds — e.g. round 1 reviewed by Codex, round 2 reviewed by Gemini — to surface different classes of issues.
 
 ## Swapping roles
 
 To flip to e.g. "Codex builds, Claude reviews":
 
 1. Edit `.cross-review/config.json` — swap `builder` and `reviewer`.
-2. Next `/review-package` will use [templates/claude-review-prompt.md](../templates/claude-review-prompt.md) instead of the Codex one.
+2. Next `/multi-model-review --review-package` will use [templates/claude-review-prompt.md](../templates/claude-review-prompt.md) instead of the Codex one.
 3. Build your change with Codex (outside this Claude session).
 4. In Codex, ensure the feature branch is committed.
-5. Come back to Claude and run `/review-package` — Claude is now the reviewer, and you run it via `claude -p ...`.
+5. Come back to Claude and run `/multi-model-review --review-package` — Claude is now the reviewer, and you run it via `claude -p ...`.
 
-Or just re-run `/cross-review init` to reset interactively.
+Or just re-run `/multi-model-review --cross-review init` to reset interactively.
 
 ## Adding a new reviewer model
 
@@ -194,7 +194,7 @@ That's it. No code change, no plugin rebuild.
 
 ### "No `specs/<slug>/` directory found"
 
-You're in ad-hoc mode. `/review-package` will still run, but the reviewer only sees the diff and `CLAUDE.md`, not a spec. Either initialize Spec Kit or write a one-page `specs/<slug>/spec.md` by hand.
+You're in ad-hoc mode. `/multi-model-review --review-package` will still run, but the reviewer only sees the diff and `CLAUDE.md`, not a spec. Either initialize Spec Kit or write a one-page `specs/<slug>/spec.md` by hand.
 
 ### "Package would contain likely secrets"
 
@@ -202,7 +202,7 @@ Grep your diff for the patterns in the error message and remove them (rotate key
 
 ### "review-report.md not found"
 
-`/apply-review` looks under `.cross-review/packages/`. Make sure the reviewer actually wrote its output there — if it wrote to stdout, redirect: `> .cross-review/packages/<pkg>/review-report.md`.
+`/multi-model-review --apply-review` looks under `.cross-review/packages/`. Make sure the reviewer actually wrote its output there — if it wrote to stdout, redirect: `> .cross-review/packages/<pkg>/review-report.md`.
 
 ### Report doesn't parse
 
@@ -213,11 +213,11 @@ The reviewer deviated from the schema in [templates/review-report.md](../templat
 
 ### Findings feel too noisy
 
-Raise the confidence floor: `/apply-review --min-confidence 85`.
+Raise the confidence floor: `/multi-model-review --apply-review --min-confidence 85`.
 
 ### Findings feel too sparse
 
-Lower the floor: `/apply-review --min-confidence 50`. Or run the package through a *different* reviewer model — different LLMs have very different sensitivities.
+Lower the floor: `/multi-model-review --apply-review --min-confidence 50`. Or run the package through a *different* reviewer model — different LLMs have very different sensitivities.
 
 ### "Template `templates/<reviewer>-review-prompt.md` not found"
 
@@ -233,6 +233,6 @@ Your configured reviewer doesn't have a template. Copy an existing one (see "Add
 
 **Can I use more than one reviewer in the same round?**  Yes, manually — see "Multi-reviewer triangulation" above. A merged-report feature is on the roadmap.
 
-**Will this overwrite my code?**  Only through `/apply-review`, and only after you confirm each edit (critical-severity findings always require explicit confirm).
+**Will this overwrite my code?**  Only through `/multi-model-review --apply-review`, and only after you confirm each edit (critical-severity findings always require explicit confirm).
 
 **Where do I report bugs?**  [github.com/formin/multi-model-review/issues](https://github.com/formin/multi-model-review/issues).

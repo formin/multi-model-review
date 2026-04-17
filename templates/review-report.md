@@ -1,6 +1,6 @@
 # Review report
 
-> Schema for the reviewer agent's output. `/apply-review` parses this file.
+> Schema for the reviewer agent's output. `/multi-model-review --apply-review` parses this file.
 > The reviewer must write its report to `.cross-review/packages/<pkg>/review-report.md`
 > following this exact structure.
 
@@ -44,4 +44,4 @@ Zero or more findings, numbered `F1`, `F2`, ...
 - **40** — plausible concern, reviewer would want to ask.
 - **20** — hunch.
 
-`/apply-review` drops findings below confidence 70 by default.
+`/multi-model-review --apply-review` drops findings below confidence 70 by default.

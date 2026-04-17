@@ -175,21 +175,24 @@
 
     <section>
       <h2>Install</h2>
-      <pre><code>git clone https://github.com/formin/multi-model-review.git \
-  ~/.claude/plugins/local/multi-model-review</code></pre>
-      <p>Then in Claude Code, run <code>/plugin</code> and point it at the cloned path.</p>
+      <p>From any Claude Code session:</p>
+      <pre><code>/plugin marketplace add https://github.com/formin/multi-model-review
+/plugin install spec-cross-review@multi-model-review</code></pre>
+      <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list.</p>
     </section>
 
     <section>
       <h2>Commands</h2>
+      <p>Single entry point with subcommand flags:</p>
       <table>
         <thead>
-          <tr><th>Command</th><th>Purpose</th></tr>
+          <tr><th>Invocation</th><th>Purpose</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>/cross-review</code></td><td>Status / init / route. Entry point.</td></tr>
-          <tr><td><code>/review-package</code></td><td>Export the handoff bundle for the reviewer model.</td></tr>
-          <tr><td><code>/apply-review</code></td><td>Ingest the reviewer's report and drive remediation.</td></tr>
+          <tr><td><code>/multi-model-review</code></td><td>Default — show current status.</td></tr>
+          <tr><td><code>/multi-model-review --cross-review [init|status]</code></td><td>Init config or show roles, base ref, and packages.</td></tr>
+          <tr><td><code>/multi-model-review --review-package [slug] [--base &lt;ref&gt;]</code></td><td>Export the handoff bundle for the reviewer model.</td></tr>
+          <tr><td><code>/multi-model-review --apply-review [path] [--min-confidence N]</code></td><td>Ingest the reviewer's report and drive remediation.</td></tr>
         </tbody>
       </table>
     </section>
@@ -202,10 +205,10 @@
     <section>
       <h2>Quick workflow</h2>
       <ol>
-        <li>Run <code>/cross-review init</code> to set builder/reviewer roles.</li>
-        <li>Build your change (Spec Kit or ad-hoc), then <code>/review-package</code> to export a handoff bundle.</li>
+        <li>Run <code>/multi-model-review --cross-review init</code> to set builder/reviewer roles.</li>
+        <li>Build your change (Spec Kit or ad-hoc), then <code>/multi-model-review --review-package</code> to export a handoff bundle.</li>
         <li>Run the reviewer model on the bundle in a separate terminal.</li>
-        <li>Run <code>/apply-review</code> to ingest findings and walk through fixes.</li>
+        <li>Run <code>/multi-model-review --apply-review</code> to ingest findings and walk through fixes.</li>
       </ol>
     </section>
 
