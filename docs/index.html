@@ -179,6 +179,13 @@
       <pre><code>/plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review</code></pre>
       <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list.</p>
+      <h3>Update or reinstall</h3>
+      <ul>
+        <li>Update: <code>/plugin update spec-cross-review@multi-model-review</code></li>
+        <li>Uninstall: <code>/plugin uninstall spec-cross-review@multi-model-review</code></li>
+        <li>Full wipe and reinstall: see <a href="https://github.com/formin/multi-model-review#update--reinstall">README — Update / reinstall</a>.</li>
+        <li>Dev-mode (<code>claude --plugin-dir</code>) clone already exists? <code>git pull</code> inside it, or delete the directory (<code>Remove-Item -Recurse -Force</code> on PowerShell / <code>rm -rf</code> elsewhere) and re-clone.</li>
+      </ul>
     </section>
 
     <section>

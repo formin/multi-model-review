@@ -80,6 +80,60 @@ cp commands/multi-model-review.md ~/.claude/commands/     # optional: /multi-mod
 
 The skill activates on phrases like "review with Codex", "review with Gemini", "cross-review", or when you type `/multi-model-review`.
 
+### Update / reinstall
+
+Pull the latest version of the plugin from this repo:
+
+```
+/plugin update spec-cross-review@multi-model-review
+```
+
+If your Claude Code version doesn't recognize the slash form, use the CLI equivalent from a shell:
+
+```bash
+claude plugin update spec-cross-review@multi-model-review
+```
+
+Uninstall the plugin while keeping the marketplace registered:
+
+```
+/plugin uninstall spec-cross-review@multi-model-review
+```
+
+Force a clean reinstall (uninstall → re-register marketplace → install):
+
+```
+/plugin uninstall spec-cross-review@multi-model-review
+/plugin marketplace remove multi-model-review
+/plugin marketplace add https://github.com/formin/multi-model-review
+/plugin install spec-cross-review@multi-model-review
+```
+
+In development mode (you cloned the repo and ran `claude --plugin-dir .`), update with `git pull` from inside the clone — no reinstall needed. If you see `fatal: destination path 'multi-model-review' already exists` when cloning, delete the existing directory first or `git pull` in place:
+
+```bash
+# Windows PowerShell
+Remove-Item -Recurse -Force multi-model-review
+git clone https://github.com/formin/multi-model-review.git
+
+# macOS / Linux / Git Bash
+rm -rf multi-model-review
+git clone https://github.com/formin/multi-model-review.git
+
+# or update in place
+cd multi-model-review && git pull
+```
+
+### Starting over from a corrupted state
+
+If the install is partially broken (stale marketplace path, install didn't complete, you renamed the clone directory):
+
+1. In Claude Code: `/plugin uninstall spec-cross-review@multi-model-review` then `/plugin marketplace remove multi-model-review`.
+2. Exit Claude Code.
+3. Inspect `~/.claude/plugins/`. If `installed_plugins.json` or `known_marketplaces.json` still have stale entries, hand-edit them out.
+4. Delete any local clone directory if you used `--plugin-dir`.
+5. Restart Claude Code and re-run the install commands from the top of this section.
+
 ## Quick start
 
 From inside a repo with a feature branch checked out:

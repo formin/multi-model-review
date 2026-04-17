@@ -24,6 +24,13 @@ See [README.md](../README.md#install). The shortest path, from inside any Claude
 
 `/reload-plugins` or restart Claude Code. `/multi-model-review` should now appear in the slash-command list.
 
+### Updating, reinstalling, starting over
+
+- **Update** to the latest version: `/plugin update spec-cross-review@multi-model-review` (or `claude plugin update spec-cross-review@multi-model-review` from a shell).
+- **Uninstall**: `/plugin uninstall spec-cross-review@multi-model-review`.
+- **Full reinstall from scratch**: see [README — Update / reinstall](../README.md#update--reinstall) and [Starting over from a corrupted state](../README.md#starting-over-from-a-corrupted-state).
+- **Dev mode (`claude --plugin-dir`)**: `git pull` inside your clone. If `git clone` fails with `destination path already exists`, either delete the existing directory (`rm -rf multi-model-review` / `Remove-Item -Recurse -Force multi-model-review` on PowerShell) or `git pull` in place.
+
 ## 2. Initialize a project
 
 In your target repo, from Claude Code:
