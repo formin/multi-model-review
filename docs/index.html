@@ -166,11 +166,11 @@
     </section>
 
     <div class="ad-slot">
-      <ins class="kakao_ad_area" style="display:none;"
+      <ins class="kakao_ad_area" style="display:none;width:100%;"
         data-ad-unit="DAN-7PRwND7ZMiqSCjr6"
         data-ad-width="300"
-        data-ad-height="250"></ins>
-      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+        data-ad-height="250"
+        data-ad-onfail="adfitOnFail"></ins>
     </div>
 
     <section>
@@ -223,5 +223,13 @@
       <p>MIT License · © 2026 <a href="https://github.com/formin">formin</a> · <a href="https://github.com/formin/multi-model-review/issues">Report an issue</a></p>
     </footer>
   </main>
+
+  <script>
+    function adfitOnFail(unitId) {
+      var ins = document.querySelector('ins.kakao_ad_area[data-ad-unit="' + unitId + '"]');
+      if (ins && ins.parentElement) ins.parentElement.style.display = 'none';
+    }
+  </script>
+  <script async type="text/javascript" charset="utf-8" src="https://t1.kakaocdn.net/kas/static/ba.min.js"></script>
 </body>
 </html>
