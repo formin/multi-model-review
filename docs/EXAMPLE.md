@@ -8,6 +8,60 @@ You are on a feature branch `feat/magic-link-auth` that implements magic-link lo
 
 The repo has Spec Kit initialized, so the feature spec lives at `specs/042-magic-link-auth/` (`spec.md`, `plan.md`, `tasks.md`).
 
+## Timeline at a glance
+
+Two processes are involved. The plugin never calls the reviewer agent for you — **you** run it in a separate terminal.
+
+| # | Where (who)                               | You invoke                                                                           | Artifact produced                                                |
+|---|-------------------------------------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------|
+| 1 | **Claude Code CLI** (builder)             | `/multi-model-review:cross-review init`                                              | `.cross-review/config.json`                                      |
+| 2 | Claude Code CLI (builder)                 | *implement the feature, then `git commit` on the feature branch*                     | source changes + commits                                         |
+| 3 | Claude Code CLI (builder)                 | `/multi-model-review:review-package`                                                 | `.cross-review/packages/<ts>-<slug>/review-package.md` + `metadata.json` |
+| 4 | **Separate terminal** running **Codex**   | `codex exec --file <pkg>/review-package.md > <pkg>/review-report.md`                 | `review-report.md` in the same package dir                       |
+| 5 | Claude Code CLI (builder)                 | `/multi-model-review:apply-review`                                                   | edits applied to source + `review-state.json`                    |
+| 6 | Claude Code CLI (builder, or git on shell) | `git commit` the applied fixes                                                      | new commits on feature branch                                    |
+| 7 | *(optional round 2)* Claude Code CLI      | `/multi-model-review:review-package` again — new timestamp, same loop              | second package dir under `.cross-review/packages/`               |
+
+The only shared state between the two processes is the package directory under `.cross-review/packages/`. That is deliberate: the reviewer model does not need access to your Claude Code session, and Claude does not need to know anything about how Codex is invoked.
+
+### Data flow
+
+```
+  Claude Code CLI  (builder = claude-code)       Separate terminal  (reviewer = codex-cli)
+  ───────────────────────────────────────        ─────────────────────────────────────────
+
+  1. :cross-review init
+        │
+        ▼
+     .cross-review/config.json
+
+  2. write code, git commit
+        │
+        ▼
+  3. :review-package
+        │
+        ▼
+     .cross-review/packages/<ts>-<slug>/
+       ├── review-package.md      ─────────▶   4. codex exec --file <pkg>/review-package.md
+       └── metadata.json                            > <pkg>/review-report.md
+                                                         │
+                                                         ▼
+                                             ◀─────  review-report.md
+
+  5. :apply-review
+        │  (reads review-report.md, walks through findings)
+        ▼
+     edits applied + review-state.json
+
+  6. git commit fixes
+
+  7. (optional) :review-package  ──── round 2, new timestamped package ───▶
+```
+
+### Role swap
+
+To flip to "Codex builds, Claude reviews" for the next round: edit `.cross-review/config.json` (swap `builder` and `reviewer`) or re-run step 1. The template lookup is `templates/<reviewer>-review-prompt.md`, so step 3 will produce a Claude-flavored package, step 4 runs `claude -p ...` instead of `codex exec ...`, and step 5 runs in Codex.
+
 ## 1. Initialize config
 
 Inside Claude Code:
