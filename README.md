@@ -46,9 +46,11 @@ Adding a new reviewer (Qwen, Mistral, a local `llama.cpp` process, ...) is a one
 
 ## Install
 
+> **Slash vs shell.** Commands that start with `/` (e.g. `/plugin install`) are typed **inside a running Claude Code session** — not at your OS shell. Commands shown in ```bash``` blocks (`git …`, `claude …`, `cp …`) are typed at your OS shell (PowerShell, bash, zsh). Mixing them up returns `'/plugin' is not recognized` in PowerShell or `command not found` elsewhere.
+
 ### As a Claude Code plugin
 
-From any Claude Code session, register this repo as a marketplace and install the plugin:
+In a Claude Code session, register this repo as a marketplace and install the plugin:
 
 ```
 /plugin marketplace add https://github.com/formin/multi-model-review
@@ -82,25 +84,25 @@ The skill activates on phrases like "review with Codex", "review with Gemini", "
 
 ### Update / reinstall
 
-Pull the latest version of the plugin from this repo:
+Pull the latest version of the plugin from this repo — in a Claude Code session:
 
 ```
 /plugin update spec-cross-review@multi-model-review
 ```
 
-If your Claude Code version doesn't recognize the slash form, use the CLI equivalent from a shell:
+Or at your OS shell (outside Claude Code), the equivalent CLI subcommand:
 
 ```bash
 claude plugin update spec-cross-review@multi-model-review
 ```
 
-Uninstall the plugin while keeping the marketplace registered:
+Uninstall the plugin while keeping the marketplace registered (in a Claude Code session):
 
 ```
 /plugin uninstall spec-cross-review@multi-model-review
 ```
 
-Force a clean reinstall (uninstall → re-register marketplace → install):
+Force a clean reinstall — uninstall, re-register the marketplace, reinstall (in a Claude Code session):
 
 ```
 /plugin uninstall spec-cross-review@multi-model-review
@@ -109,10 +111,10 @@ Force a clean reinstall (uninstall → re-register marketplace → install):
 /plugin install spec-cross-review@multi-model-review
 ```
 
-In development mode (you cloned the repo and ran `claude --plugin-dir .`), update with `git pull` from inside the clone — no reinstall needed. If you see `fatal: destination path 'multi-model-review' already exists` when cloning, delete the existing directory first or `git pull` in place:
+In development mode (you cloned the repo and ran `claude --plugin-dir .`), update with `git pull` at your OS shell from inside the clone — no reinstall needed. If you see `fatal: destination path 'multi-model-review' already exists` when re-cloning, delete the existing directory first or pull in place:
 
 ```bash
-# Windows PowerShell
+# Windows PowerShell (at the OS shell, NOT inside Claude Code)
 Remove-Item -Recurse -Force multi-model-review
 git clone https://github.com/formin/multi-model-review.git
 

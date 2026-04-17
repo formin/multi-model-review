@@ -26,10 +26,12 @@ See [README.md](../README.md#install). The shortest path, from inside any Claude
 
 ### Updating, reinstalling, starting over
 
-- **Update** to the latest version: `/plugin update spec-cross-review@multi-model-review` (or `claude plugin update spec-cross-review@multi-model-review` from a shell).
-- **Uninstall**: `/plugin uninstall spec-cross-review@multi-model-review`.
+> `/plugin …` commands go inside a **Claude Code session**. `claude …` and `git …` commands go at your **OS shell** (PowerShell, bash, zsh). Pasting `/plugin …` at a PowerShell prompt returns `'/plugin' is not recognized`.
+
+- **Update** to the latest version — in Claude Code: `/plugin update spec-cross-review@multi-model-review`. Or at the shell: `claude plugin update spec-cross-review@multi-model-review`.
+- **Uninstall** — in Claude Code: `/plugin uninstall spec-cross-review@multi-model-review`.
 - **Full reinstall from scratch**: see [README — Update / reinstall](../README.md#update--reinstall) and [Starting over from a corrupted state](../README.md#starting-over-from-a-corrupted-state).
-- **Dev mode (`claude --plugin-dir`)**: `git pull` inside your clone. If `git clone` fails with `destination path already exists`, either delete the existing directory (`rm -rf multi-model-review` / `Remove-Item -Recurse -Force multi-model-review` on PowerShell) or `git pull` in place.
+- **Dev mode (`claude --plugin-dir`)**: at the shell, `git pull` inside your clone. If `git clone` fails with `destination path already exists`, either delete the existing directory (`rm -rf multi-model-review` / `Remove-Item -Recurse -Force multi-model-review` on PowerShell) or `git pull` in place.
 
 ## 2. Initialize a project
 
