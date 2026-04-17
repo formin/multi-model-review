@@ -16,7 +16,7 @@ Activate when the user:
 - Asks to "review with Codex" / "review with Gemini" / "review with Claude" / "cross-review" / "second opinion from another model"
 - Wants to split build and review across different LLMs (Claude Code, Codex CLI, Gemini CLI, etc.)
 - Mentions spec-kit artifacts (`spec.md`, `plan.md`, `tasks.md`) in a review context
-- Invokes `/multi-model-review`, `/multi-model-review --cross-review`, `/multi-model-review --review-package`, or `/multi-model-review --apply-review`
+- Invokes `/multi-model-review:cross-review`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`
 
 ## Mental model
 
@@ -64,7 +64,7 @@ If `.cross-review/config.json` is absent, create it on first use. Ask the user:
 
 Warn (don't block) if builder == reviewer: the value of this workflow is cross-model perspective.
 
-## Export flow (`/multi-model-review --review-package`)
+## Export flow (`/multi-model-review:review-package`)
 
 Build a self-contained markdown file the reviewer model can read with zero other context.
 
@@ -98,7 +98,7 @@ Build a self-contained markdown file the reviewer model can read with zero other
 
 **Do not** try to invoke the other model yourself. The handoff is user-driven.
 
-## Ingest flow (`/multi-model-review --apply-review`)
+## Ingest flow (`/multi-model-review:apply-review`)
 
 The user has run the reviewer model and saved its output as `review-report.md` in the package directory (or pasted its content).
 
@@ -109,15 +109,15 @@ The user has run the reviewer model and saved its output as `review-report.md` i
 3. Filter: by default drop findings with confidence < 70 unless the user asks for all.
 4. Present findings as a prioritized checklist. Do not auto-edit code.
 5. For each accepted finding, walk the user through the fix — read the file, propose an edit, apply it after confirmation.
-6. After fixes land, remind the user they can run `/multi-model-review --review-package` again for a second pass, optionally with a *different* reviewer model to triangulate.
+6. After fixes land, remind the user they can run `/multi-model-review:review-package` again for a second pass, optionally with a *different* reviewer model to triangulate.
 
 ## Role swap & adding new reviewers
 
 The same skill handles every direction. The only things that change between "Claude builds / Codex reviews", "Codex builds / Gemini reviews", "Gemini builds / Claude reviews", etc. are:
 
-- Which model is active when `/multi-model-review --review-package` runs (the builder)
+- Which model is active when `/multi-model-review:review-package` runs (the builder)
 - Which template is used to wrap the package — lookup is `templates/<reviewer>-review-prompt.md`
-- Which model is active when `/multi-model-review --apply-review` runs (the builder, again)
+- Which model is active when `/multi-model-review:apply-review` runs (the builder, again)
 
 Record the roles in `.cross-review/config.json` so subsequent runs don't re-ask.
 
@@ -133,10 +133,9 @@ Record the roles in `.cross-review/config.json` so subsequent runs don't re-ask.
 
 ## Related commands
 
-- `/multi-model-review` — single entry point. Dispatches by flag:
-  - `--cross-review [init|status]` — interactive config / status (default when no flag given)
-  - `--review-package [slug] [--base <ref>]` — export flow
-  - `--apply-review [package-dir] [--min-confidence N]` — ingest flow
+- `/multi-model-review:cross-review [init|status]` — interactive config / status
+- `/multi-model-review:review-package [slug] [--base <ref>]` — export flow
+- `/multi-model-review:apply-review [package-dir] [--min-confidence N]` — ingest flow
 
 ## Related files
 

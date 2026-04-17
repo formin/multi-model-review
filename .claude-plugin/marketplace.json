@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "spec-cross-review",
+      "name": "multi-model-review",
       "source": "./",
       "description": "Cross-agent code review workflow for Spec-Driven Development. Build with one agent (Claude/Codex), review with the other, using portable spec-kit artifacts as the handoff surface."
     }
