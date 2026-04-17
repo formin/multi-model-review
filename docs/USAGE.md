@@ -15,14 +15,24 @@ Step-by-step walkthrough for `multi-model-review`.
 
 ## 1. Install the plugin
 
-See [README.md](../README.md#install). The shortest path, from inside any Claude Code session:
+See [README.md](../README.md#install). The shortest path — inside any Claude Code session:
 
 ```
 /plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review
 ```
 
+Or at your OS shell (equivalent):
+
+```bash
+claude plugin marketplace add https://github.com/formin/multi-model-review
+claude plugin install spec-cross-review@multi-model-review
+claude plugin list          # verify "Status: enabled"
+```
+
 `/reload-plugins` or restart Claude Code. `/multi-model-review` should now appear in the slash-command list.
+
+Both commands default to `--scope user` (plugin available in every project). Add `--scope project` to restrict to one project — the registration is written to `<project>/.claude/settings.json` instead.
 
 ### Updating, reinstalling, starting over
 

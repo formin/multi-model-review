@@ -50,16 +50,48 @@ Adding a new reviewer (Qwen, Mistral, a local `llama.cpp` process, ...) is a one
 
 ### As a Claude Code plugin
 
-In a Claude Code session, register this repo as a marketplace and install the plugin:
+Install via in-session slash commands **or** via the `claude` CLI at your OS shell. Both forms are equivalent.
+
+In a Claude Code session:
 
 ```
 /plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review
 ```
 
-Run the commands from inside a project directory if you want the registration scoped to that project (written to the project's `.claude/settings.json`).
+Or at your OS shell:
 
-To develop against a local clone:
+```bash
+claude plugin marketplace add https://github.com/formin/multi-model-review
+claude plugin install spec-cross-review@multi-model-review
+```
+
+Verify the install:
+
+```bash
+claude plugin list
+```
+
+Expected output includes `spec-cross-review@multi-model-review` with `Status: enabled`. Then run `/reload-plugins` inside Claude Code (or restart it) and `/multi-model-review` will appear in the slash-command picker.
+
+#### Install scope
+
+`marketplace add` and `install` accept `--scope <user|project|local>`. Default is `user` — the plugin becomes available across every project you open. The three scopes write to different settings files:
+
+| Scope     | Settings file                          |
+|-----------|----------------------------------------|
+| `user`    | `~/.claude/settings.json`              |
+| `project` | `<project>/.claude/settings.json`      |
+| `local`   | `<project>/.claude/settings.local.json`|
+
+To restrict to a single project (commit `<project>/.claude/settings.json` so the team sees it):
+
+```bash
+claude plugin marketplace add https://github.com/formin/multi-model-review --scope project
+claude plugin install spec-cross-review@multi-model-review --scope project
+```
+
+### Develop against a local clone
 
 ```bash
 git clone https://github.com/formin/multi-model-review.git

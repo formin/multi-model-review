@@ -179,7 +179,11 @@
       <p>In a Claude Code session:</p>
       <pre><code>/plugin marketplace add https://github.com/formin/multi-model-review
 /plugin install spec-cross-review@multi-model-review</code></pre>
-      <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list.</p>
+      <p>Or at your OS shell (equivalent):</p>
+      <pre><code>claude plugin marketplace add https://github.com/formin/multi-model-review
+claude plugin install spec-cross-review@multi-model-review
+claude plugin list</code></pre>
+      <p>Then run <code>/reload-plugins</code> (or restart Claude Code) and <code>/multi-model-review</code> will appear in the slash-command list. Default scope is <code>user</code>; add <code>--scope project</code> to restrict to one project.</p>
       <h3>Update or reinstall</h3>
       <ul>
         <li>Update (in Claude Code): <code>/plugin update spec-cross-review@multi-model-review</code> — or at your shell: <code>claude plugin update spec-cross-review@multi-model-review</code>.</li>
