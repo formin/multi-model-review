@@ -187,7 +187,7 @@ Claude Code namespaces plugin commands as `/<plugin-name>:<command>`. This plugi
 | `/multi-model-review:review-package [slug] [--base <ref>]` | Export the handoff bundle for the reviewer model.           |
 | `/multi-model-review:apply-review [path] [--min-confidence N]` | Ingest the reviewer's report and drive remediation.     |
 
-Full details in [docs/USAGE.md](docs/USAGE.md).
+Full details in [docs/USAGE.md](docs/USAGE.md). A scenario-driven walkthrough (Claude builds → Codex reviews → Claude applies fixes) lives in [docs/EXAMPLE.md](docs/EXAMPLE.md).
 
 ## Directory layout
 
