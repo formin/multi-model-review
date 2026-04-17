@@ -81,8 +81,8 @@ If you don't want the full plugin:
 
 ```bash
 mkdir -p ~/.claude/skills ~/.claude/commands
-cp -r skills/cross-review ~/.claude/skills/
-cp -r templates ~/.claude/skills/cross-review/
+cp -r skills/multi-model-review ~/.claude/skills/
+cp -r templates ~/.claude/skills/multi-model-review/
 cp commands/*.md ~/.claude/commands/     # optional: /cross-review, /review-package, /apply-review (no plugin namespace)
 ```
 
@@ -196,7 +196,7 @@ multi-model-review/
 ├── .claude-plugin/
 │   ├── plugin.json                    # plugin manifest
 │   └── marketplace.json               # single-plugin marketplace catalog
-├── skills/cross-review/SKILL.md       # the skill (model-invoked)
+├── skills/multi-model-review/SKILL.md # the skill (model-invoked)
 ├── commands/
 │   └── multi-model-review.md          # single slash command, dispatches by flag
 ├── templates/                         # reviewer prompts + report schema

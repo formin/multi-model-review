@@ -1,5 +1,5 @@
 ---
-name: cross-review
+name: multi-model-review
 description: This skill should be used when the user asks to run a multi-model / cross-agent code review ("build with Claude, review with Codex", "have Gemini review this", "get a second opinion from another model", "cross-review"), wants to bridge spec-kit artifacts between Claude Code, Codex CLI, Gemini CLI, or any other agent, or invokes `/multi-model-review:cross-review`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`. It coordinates the "builder vs reviewer" handoff using portable spec/plan/tasks/diff artifacts — never calls the other agent directly; instead produces a review-package file the user feeds to the chosen reviewer model, and ingests the review report that comes back. Reviewer selection is template-driven, so any agent with a matching `templates/<agent>-review-prompt.md` works.
 version: 0.1.0
 license: MIT

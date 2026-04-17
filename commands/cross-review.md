@@ -33,4 +33,4 @@ Short. One section per piece of information. No emojis. Link files as `.cross-re
 
 - `/multi-model-review:review-package` — export the handoff bundle for the reviewer
 - `/multi-model-review:apply-review` — ingest the reviewer's report
-- Skill: `skills/cross-review/SKILL.md`
+- Skill: `skills/multi-model-review/SKILL.md`
