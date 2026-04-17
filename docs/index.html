@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>multi-model-review — Multi-model code review for Spec-Driven Development</title>
+  <meta name="description" content="Build with one LLM (Claude / Codex / Gemini), review with another. A Claude Code plugin that turns GitHub Spec Kit artifacts into a portable cross-model review handoff.">
+  <meta property="og:title" content="multi-model-review">
+  <meta property="og:description" content="Multi-model code review for Spec-Driven Development. Build with one LLM, review with another.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://formin.github.io/multi-model-review/">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --code-bg: #1f2428;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); text-decoration: underline; }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem;
+    }
+    .hero {
+      text-align: center;
+      padding: 1.5rem 0 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    .hero h1 {
+      margin: 0 0 0.5rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .hero p.tagline {
+      margin: 0.5rem 0 1.25rem;
+      font-size: 1.15rem;
+      color: var(--muted);
+    }
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .cta {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.6rem 1.25rem;
+      background: var(--accent);
+      color: var(--bg);
+      border-radius: 6px;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .cta:hover { background: var(--accent-hover); color: var(--bg); text-decoration: none; }
+    h2 {
+      margin-top: 2.5rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.5rem;
+    }
+    h3 { margin-top: 1.75rem; font-size: 1.15rem; }
+    code {
+      background: var(--code-bg);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-family: ui-monospace, SFMono-Regular, "Consolas", monospace;
+    }
+    pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    pre code { background: transparent; padding: 0; font-size: 0.88rem; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1rem 0;
+    }
+    th, td {
+      padding: 0.6rem 0.8rem;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th { background: var(--panel); }
+    blockquote {
+      border-left: 3px solid var(--border);
+      padding: 0.25rem 1rem;
+      color: var(--muted);
+      margin: 1rem 0;
+    }
+    .ad-slot {
+      margin: 2.5rem auto;
+      text-align: center;
+      min-height: 260px;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 1.8rem; }
+      .container { padding: 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>multi-model-review</h1>
+      <p class="tagline">Multi-model code review for Spec-Driven Development.</p>
+      <p>Build with <strong>one</strong> LLM (Claude&nbsp;Code, Codex&nbsp;CLI, Gemini&nbsp;CLI, ...), review with a <strong>different</strong> one. A Claude Code plugin built on top of <a href="https://github.com/github/spec-kit">GitHub Spec Kit</a>.</p>
+      <div class="badges">
+        <span class="badge">v0.1.0</span>
+        <span class="badge">MIT</span>
+        <span class="badge">Claude · Codex · Gemini</span>
+      </div>
+      <div>
+        <a class="cta" href="https://github.com/formin/multi-model-review">View on GitHub →</a>
+      </div>
+    </section>
+
+    <section>
+      <h2>Why multi-model?</h2>
+      <p>A single LLM reviewing its own output tends to rationalize rather than challenge. A <em>different</em> model reading the same spec and diff has:</p>
+      <ul>
+        <li>Different training data — catches issues the builder's model is blind to.</li>
+        <li>Different calibration on severity — less confirmation bias.</li>
+        <li>Different house style — flags idiomatic drift the builder normalizes.</li>
+      </ul>
+      <p>Because the handoff is plain markdown on disk, the two models never have to talk to each other — and any LLM with a CLI can play reviewer.</p>
+    </section>
+
+    <div class="ad-slot">
+      <ins class="kakao_ad_area" style="display:none;"
+        data-ad-unit="DAN-7PRwND7ZMiqSCjr6"
+        data-ad-width="300"
+        data-ad-height="250"></ins>
+      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+    </div>
+
+    <section>
+      <h2>Install</h2>
+      <pre><code>git clone https://github.com/formin/multi-model-review.git \
+  ~/.claude/plugins/local/multi-model-review</code></pre>
+      <p>Then in Claude Code, run <code>/plugin</code> and point it at the cloned path.</p>
+    </section>
+
+    <section>
+      <h2>Commands</h2>
+      <table>
+        <thead>
+          <tr><th>Command</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/cross-review</code></td><td>Status / init / route. Entry point.</td></tr>
+          <tr><td><code>/review-package</code></td><td>Export the handoff bundle for the reviewer model.</td></tr>
+          <tr><td><code>/apply-review</code></td><td>Ingest the reviewer's report and drive remediation.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Supported reviewers</h2>
+      <p>Out of the box: Claude, Codex, Gemini. Adding a new reviewer is a one-file change — drop <code>templates/&lt;id&gt;-review-prompt.md</code> and reference the ID in <code>.cross-review/config.json</code>.</p>
+    </section>
+
+    <section>
+      <h2>Quick workflow</h2>
+      <ol>
+        <li>Run <code>/cross-review init</code> to set builder/reviewer roles.</li>
+        <li>Build your change (Spec Kit or ad-hoc), then <code>/review-package</code> to export a handoff bundle.</li>
+        <li>Run the reviewer model on the bundle in a separate terminal.</li>
+        <li>Run <code>/apply-review</code> to ingest findings and walk through fixes.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Learn more</h2>
+      <ul>
+        <li><a href="https://github.com/formin/multi-model-review">GitHub repository</a></li>
+        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/USAGE.md">Step-by-step usage guide</a></li>
+        <li><a href="https://github.com/formin/multi-model-review/blob/main/README.md">README</a></li>
+        <li><a href="https://github.com/github/spec-kit">GitHub Spec Kit (upstream)</a></li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>MIT License · © 2026 <a href="https://github.com/formin">formin</a> · <a href="https://github.com/formin/multi-model-review/issues">Report an issue</a></p>
+    </footer>
+  </main>
+</body>
+</html>
