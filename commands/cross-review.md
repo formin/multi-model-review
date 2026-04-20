@@ -18,8 +18,12 @@ No second arg or `status`:
 
 `init`:
 - Interactively create `.cross-review/config.json`. Ask in order:
-  1. Which agent is the **builder**? (`claude-code` | `codex-cli` | `gemini-cli` | custom ID)
+  1. Which agent is the **builder**? (`claude-code` | `codex-cli` | `codex-mcp` | `codex-auto` | `gemini-cli` | custom ID)
   2. Which agent is the **reviewer**? Confirm it's different from the builder; warn (don't block) if identical.
+     - For Codex, offer the three execution modes and explain them:
+       - `codex-auto` — **default**. Heuristic: try MCP first; on `-32001` timeout, fall back to CLI.
+       - `codex-cli` — `codex exec ... > log.txt &` plus `Monitor` tool. Pick for reviews that may take minutes to tens of minutes.
+       - `codex-mcp` — `mcp__codex__codex` tool. Only for <60s validations; the MCP tool hard-codes a `-32001 timed out` error at 60s.
   3. Base ref to diff against (default: `main`).
   4. Spec-kit feature directory — glob `specs/*/` and let the user pick one, or skip for ad-hoc mode.
 - Write the config.

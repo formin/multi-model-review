@@ -25,13 +25,27 @@ Because the bundle is just markdown, any LLM with a CLI (or an API) can play rev
 
 ## Supported reviewers out of the box
 
-| Reviewer   | Template                                   | Example command                                                                 |
-|------------|--------------------------------------------|---------------------------------------------------------------------------------|
-| Claude     | `templates/claude-review-prompt.md`        | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md`          |
-| Codex      | `templates/codex-review-prompt.md`         | `codex exec --file <pkg>/review-package.md > <pkg>/review-report.md`           |
-| Gemini     | `templates/gemini-review-prompt.md`        | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md`               |
+| Reviewer      | Template                                     | Example command                                                                 |
+|---------------|----------------------------------------------|---------------------------------------------------------------------------------|
+| Claude        | `templates/claude-review-prompt.md`          | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md`           |
+| Codex (auto)  | `templates/codex-auto-review-prompt.md`      | **Default for Codex.** Heuristic — try MCP first, fall back to CLI on timeout.  |
+| Codex (CLI)   | `templates/codex-cli-review-prompt.md`       | `codex exec --file <pkg>/review-package.md > <pkg>/log.txt 2>&1 &` + `Monitor`  |
+| Codex (MCP)   | `templates/codex-mcp-review-prompt.md`       | Call the `mcp__codex__codex` tool inline (<60s budget; hardcoded timeout)       |
+| Gemini        | `templates/gemini-review-prompt.md`          | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md`                |
 
 Adding a new reviewer (Qwen, Mistral, a local `llama.cpp` process, ...) is a one-file change: drop `templates/<reviewer>-review-prompt.md` and use the new ID in `config.json`.
+
+### Codex execution modes — MCP vs CLI vs auto
+
+The `mcp__codex__codex` MCP tool hard-codes a `-32001 timed out` error at 60 seconds, so long reviews always fail when invoked via MCP. For anything past a quick sanity check, use the CLI path. `codex-auto` is the default — it tries MCP first and falls back to CLI on timeout, so you rarely need to pick manually.
+
+| Value (`reviewer`) | Execution method                                    | Suitable for              | Failure signal                        |
+|--------------------|-----------------------------------------------------|---------------------------|---------------------------------------|
+| `codex-mcp`        | `mcp__codex__codex` MCP tool (inline)               | <60s short validations    | `-32001 timed out` (hardcoded at 60s) |
+| `codex-cli`        | `codex exec ... > log.txt 2>&1 &` + `Monitor` tool  | Minutes to tens of minutes | No inherent timeout                  |
+| `codex-auto` (default) | Heuristic + CLI fallback when MCP times out     | When unsure               | —                                     |
+
+Pick `codex-cli` explicitly if you already know the review will take minutes; pick `codex-mcp` if you want the round-trip to stay short and fail fast if it can't. Otherwise leave it on `codex-auto`.
 
 ## Requirements
 
@@ -168,11 +182,11 @@ Claude reads the report, filters findings by confidence, and walks you through e
 
 ### Multi-reviewer pass (triangulate)
 
-Nothing stops you from running the same package through two reviewers:
+Nothing stops you from running the same package through two reviewers. Use the CLI form for Codex here — the MCP tool would time out on anything non-trivial:
 
 ```bash
 codex  exec --file <pkg>/review-package.md > <pkg>/review-report-codex.md
-gemini --file <pkg>/review-package.md       > <pkg>/review-report-gemini.md
+gemini --file <pkg>/review-package.md      > <pkg>/review-report-gemini.md
 ```
 
 Then rename one to `review-report.md` and pass the other to `/multi-model-review:apply-review <pkg>` manually, or merge the two reports by hand. A built-in multi-reviewer merge is on the roadmap.
@@ -200,7 +214,10 @@ multi-model-review/
 ├── commands/
 │   └── multi-model-review.md          # single slash command, dispatches by flag
 ├── templates/                         # reviewer prompts + report schema
-│   ├── codex-review-prompt.md
+│   ├── codex-review-prompt.md          # legacy codex-cli (0.1.0 compat)
+│   ├── codex-cli-review-prompt.md      # explicit `codex exec` CLI path
+│   ├── codex-mcp-review-prompt.md      # `mcp__codex__codex` tool (<60s)
+│   ├── codex-auto-review-prompt.md     # MCP-first, CLI fallback (default)
 │   ├── claude-review-prompt.md
 │   ├── gemini-review-prompt.md
 │   └── review-report.md
