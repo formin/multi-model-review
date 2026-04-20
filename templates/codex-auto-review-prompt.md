@@ -1,16 +1,15 @@
-# Code Review Request — for Codex CLI (legacy template)
+# Code Review Request — for Codex (auto mode: MCP-first, CLI fallback)
 
-> **Compatibility note.** This file is kept for 0.1.0 configs where `reviewer = codex-cli`. New configs should pick one of:
->
-> - `codex-auto` → `templates/codex-auto-review-prompt.md` — **default**. MCP-first, CLI fallback on `-32001 timed out`.
-> - `codex-cli` → `templates/codex-cli-review-prompt.md` — explicit long-running CLI (`codex exec ... > log.txt &` + `Monitor`).
-> - `codex-mcp` → `templates/codex-mcp-review-prompt.md` — explicit `mcp__codex__codex` MCP tool; <60s only.
->
-> The command resolver falls through to this file if `codex-cli-review-prompt.md` is missing, preserving older installs.
-
-You are acting as an **independent code reviewer**. The code below was written by a different agent (Claude Code) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
+You are acting as an **independent code reviewer**. The code below was written by a different agent (for example Claude Code) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
 
 This file is self-contained. Do not rely on memory of prior conversations.
+
+> **Invocation mode: `codex-auto`.** The builder skill picks between MCP and CLI based on package size:
+>
+> - If the package is small (short diff, few files, expected <60s), you are being called via the `mcp__codex__codex` MCP tool, which hard-codes a `-32001 timed out` error at 60 seconds. Work within that budget — triage to the top 3–5 findings and emit.
+> - If the package is large, or the MCP call already returned `-32001 timed out`, the skill will hand the package to `codex exec --file` in a background process with `Monitor` attached — no time limit. In that case, do a thorough review.
+>
+> Treat both invocation paths as the same review task; only the pacing differs. If you do not know which mode you are in, assume the MCP budget applies and time-box yourself.
 
 ---
 
@@ -64,7 +63,7 @@ Base: `{{BASE_REF}}` → Head: `{{HEAD_REF}}`
 
 ## Your task
 
-Produce a review report that follows this schema exactly — write it to `{{REPORT_PATH}}`:
+Produce a review report that follows this schema exactly — write it to `{{REPORT_PATH}}` (CLI path), or return it as the MCP response (MCP path):
 
 ```markdown
 # Review report
@@ -118,4 +117,7 @@ Only findings with confidence ≥ 70 will be shown to the builder by default.
 
 ## Output contract
 
-Write the report to `{{REPORT_PATH}}` as a single markdown file. Do not edit any other files. Do not fetch external resources — everything you need is in this package.
+- **MCP path:** return the report as markdown text in the tool response.
+- **CLI path:** write the report to `{{REPORT_PATH}}` as a single markdown file.
+
+Do not edit any other files. Do not fetch external resources — everything you need is in this package.

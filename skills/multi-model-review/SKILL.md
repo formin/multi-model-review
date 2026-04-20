@@ -91,12 +91,26 @@ Build a self-contained markdown file the reviewer model can read with zero other
    - `review-package.md`
    - `metadata.json` with base/head commits + roles
 
-5. Print the reviewer command the user should run next. Examples:
-   - Codex CLI: `codex exec --file .cross-review/packages/<pkg>/review-package.md`
-   - Claude Code: `claude -p "$(cat .cross-review/packages/<pkg>/review-package.md)"`
-   - Gemini CLI: `gemini --file .cross-review/packages/<pkg>/review-package.md`
+5. Print the reviewer command the user should run next. For Codex, the exact command depends on `config.reviewer`:
 
-**Do not** try to invoke the other model yourself. The handoff is user-driven.
+   | Reviewer ID   | Execution method                                                                                         | Suitable for            | Failure signal                        |
+   |---------------|----------------------------------------------------------------------------------------------------------|-------------------------|---------------------------------------|
+   | `codex-mcp`   | `mcp__codex__codex` MCP tool, called inline with the package contents as the prompt                      | <60s short validations  | `-32001 timed out` (hardcoded at 60s) |
+   | `codex-cli`   | `codex exec --file <pkg>/review-package.md > <pkg>/log.txt 2>&1 &` then the `Monitor` tool until it exits | Minutes to tens of minutes | No inherent timeout                |
+   | `codex-auto`  | **Default.** Heuristic — try `codex-mcp` first; on `-32001 timed out` or if the diff is obviously long, fall back to `codex-cli`. | When unsure         | —                                    |
+   | `claude-code` | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md`                                    | Any length              | —                                    |
+   | `gemini-cli`  | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md`                                         | Any length              | —                                    |
+
+**Do not** try to invoke the other model yourself. The handoff is user-driven — *unless* `reviewer` is `codex-auto` or `codex-mcp`, in which case the skill may call the `mcp__codex__codex` tool on the user's behalf (short path only). For `codex-cli` the user always runs the command themselves, because long-running background processes belong on the user's shell, not inside the skill's request/response cycle.
+
+### codex-auto fallback logic
+
+When `reviewer = codex-auto`, after writing the package:
+
+1. Estimate package size. If it is > ~20 KB or the diff touches > ~20 files, skip MCP and go straight to CLI — a 60s budget is unrealistic.
+2. Otherwise, call the `mcp__codex__codex` tool with the package contents as the prompt.
+3. If the tool returns `-32001 timed out` (or any timeout error), print the `codex-cli` invocation and hand control back to the user. Do not retry MCP.
+4. On MCP success, write the returned text to `<pkg>/review-report.md` and continue to the ingest phase.
 
 ## Ingest flow (`/multi-model-review:apply-review`)
 
@@ -125,7 +139,7 @@ Record the roles in `.cross-review/config.json` so subsequent runs don't re-ask.
 
 ## Important constraints
 
-- **No side calls to external models.** The skill must not shell out to Codex, Gemini, or invoke Claude via the API — the user runs the other model.
+- **No side calls to external models** — with one exception. The skill must not shell out to Codex CLI, Gemini, or invoke Claude via the API. The sole exception is the `mcp__codex__codex` MCP tool under `codex-mcp` / `codex-auto` reviewer IDs, and only for the short-path case (<60s). Any other invocation must be left to the user.
 - **Artifacts only.** All state lives in `.cross-review/` and the spec-kit `specs/` tree. Nothing else.
 - **Never auto-apply a finding with confidence < 70**, even if the user has approved the whole batch — re-confirm for each low-confidence item.
 - **Never escalate severity.** If the reviewer marked a finding "minor", do not re-rank it to "critical" during ingest.
@@ -139,7 +153,10 @@ Record the roles in `.cross-review/config.json` so subsequent runs don't re-ask.
 
 ## Related files
 
-- `templates/codex-review-prompt.md` — wraps artifacts for Codex as reviewer
+- `templates/codex-review-prompt.md` — legacy name; resolved when reviewer is `codex-cli` and no mode-specific template is present (0.1.0 compat)
+- `templates/codex-cli-review-prompt.md` — explicit `codex exec` CLI invocation
+- `templates/codex-mcp-review-prompt.md` — `mcp__codex__codex` MCP tool invocation (<60s only)
+- `templates/codex-auto-review-prompt.md` — default Codex path: MCP-first with CLI fallback
 - `templates/claude-review-prompt.md` — wraps artifacts for Claude as reviewer
 - `templates/gemini-review-prompt.md` — wraps artifacts for Gemini as reviewer
 - `templates/review-report.md` — the schema every reviewer must follow (model-agnostic)

@@ -1,16 +1,16 @@
-# Code Review Request — for Codex CLI (legacy template)
+# Code Review Request — for Codex via MCP (`mcp__codex__codex`)
 
-> **Compatibility note.** This file is kept for 0.1.0 configs where `reviewer = codex-cli`. New configs should pick one of:
->
-> - `codex-auto` → `templates/codex-auto-review-prompt.md` — **default**. MCP-first, CLI fallback on `-32001 timed out`.
-> - `codex-cli` → `templates/codex-cli-review-prompt.md` — explicit long-running CLI (`codex exec ... > log.txt &` + `Monitor`).
-> - `codex-mcp` → `templates/codex-mcp-review-prompt.md` — explicit `mcp__codex__codex` MCP tool; <60s only.
->
-> The command resolver falls through to this file if `codex-cli-review-prompt.md` is missing, preserving older installs.
-
-You are acting as an **independent code reviewer**. The code below was written by a different agent (Claude Code) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
+You are acting as an **independent code reviewer**. The code below was written by a different agent (for example Claude Code) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
 
 This file is self-contained. Do not rely on memory of prior conversations.
+
+> **Invocation mode: `codex-mcp`.** You are being invoked through the `mcp__codex__codex` MCP tool. That tool hard-codes a `-32001 timed out` error at 60 seconds. Work within that budget:
+>
+> - Scan the diff once, pick the 3–5 highest-signal findings, and emit them.
+> - Do not think out loud. Keep internal monologue out of the output.
+> - If you cannot complete the review in the budget, emit whatever findings you have and set the verdict to `approve-with-nits` with a note that the review was time-boxed. Do **not** stall.
+>
+> This mode is appropriate for short validations (tiny diffs, single-file changes, sanity checks). For larger reviews the user should re-run with reviewer = `codex-cli` or `codex-auto`.
 
 ---
 
@@ -89,20 +89,20 @@ Produce a review report that follows this schema exactly — write it to `{{REPO
 ...
 ```
 
-### Review checklist
+### Time-boxed review checklist (MCP budget)
 
 1. **Spec alignment** — does the diff actually implement what `spec.md` and `tasks.md` claim? Missing tasks are findings.
-2. **CLAUDE.md adherence** — every rule in the CLAUDE.md section is reviewable. If the diff violates one, file a finding.
-3. **Correctness** — bugs, off-by-one, null/undefined handling, concurrency, error paths, edge cases.
-4. **Security** — injection, deserialization, secret handling, authN/Z, input validation at trust boundaries.
-5. **Diff hygiene** — dead code, unrelated changes, commented-out blocks, debug prints.
+2. **CLAUDE.md adherence** — violations are findings.
+3. **Correctness** — highest-risk bugs only (data loss, security, concurrency). Defer micro-bugs to a CLI-mode pass.
+4. **Security** — injection, secret handling, authN/Z, input validation at trust boundaries.
 
-### What not to flag
+### What not to flag (especially under the 60s budget)
 
 - Style issues that a linter/formatter would catch.
 - Missing tests, unless CLAUDE.md explicitly requires them for this change.
 - Opinionated refactors not called out in `spec.md` or `plan.md`.
 - Pre-existing issues outside the diff.
+- Speculative issues you cannot verify in the time budget — mark them confidence ≤ 40 and keep moving.
 
 ### Confidence scoring
 
@@ -118,4 +118,4 @@ Only findings with confidence ≥ 70 will be shown to the builder by default.
 
 ## Output contract
 
-Write the report to `{{REPORT_PATH}}` as a single markdown file. Do not edit any other files. Do not fetch external resources — everything you need is in this package.
+Return the report as markdown text in your MCP response (the caller will write it to `{{REPORT_PATH}}`). Do not edit any files. Do not fetch external resources — everything you need is in this package. Do not exceed the 60-second budget.

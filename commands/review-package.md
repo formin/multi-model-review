@@ -31,7 +31,10 @@ Arguments: `$ARGUMENTS`
    - Root `CLAUDE.md` + any `CLAUDE.md` under directories the diff touched.
 
 5. Select the reviewer template by file convention: `templates/<config.reviewer>-review-prompt.md`.
-   - `codex-cli` → `templates/codex-review-prompt.md`
+   - `codex-auto` → `templates/codex-auto-review-prompt.md` (**default for Codex**; heuristic — try MCP first, fall back to CLI on `-32001` timeout)
+   - `codex-cli` → `templates/codex-cli-review-prompt.md` (explicit CLI; for reviews expected to take minutes to tens of minutes)
+   - `codex-mcp` → `templates/codex-mcp-review-prompt.md` (explicit MCP; only for <60s validations — the `mcp__codex__codex` tool hard-codes a `-32001 timed out` error at 60s)
+   - `codex-cli` legacy alias → also resolves `templates/codex-review-prompt.md` if the `-cli-` variant is missing (backward compat with 0.1.0)
    - `claude-code` → `templates/claude-review-prompt.md`
    - `gemini-cli` → `templates/gemini-review-prompt.md`
    - Any other ID → `templates/<id>-review-prompt.md`
@@ -43,11 +46,18 @@ Arguments: `$ARGUMENTS`
 
 8. Print to the user:
    - The package path.
-   - The exact command to run the reviewer. Examples:
-     - Codex: `codex exec --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md`
-     - Claude: `claude -p "$(cat .cross-review/packages/<pkg>/review-package.md)" > .cross-review/packages/<pkg>/review-report.md`
-     - Gemini: `gemini --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md`
+   - The exact command to run the reviewer, matching the configured reviewer ID:
+
+     | Reviewer ID   | Invocation to print                                                                                                                  | Suitable for              | Known failure                         |
+     |---------------|--------------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------|
+     | `codex-auto`  | Heuristic: if the diff is small and the reviewer is expected to finish in <60s, try the `mcp__codex__codex` tool; otherwise — or on `-32001 timed out` — fall back to the `codex-cli` invocation below. | When unsure (**default**) | — (auto-falls back)                   |
+     | `codex-mcp`   | Call the `mcp__codex__codex` MCP tool with the package file contents as the prompt and wait for the result inline.                  | <60s short validations    | `-32001 timed out` at 60s (hardcoded) |
+     | `codex-cli`   | `codex exec --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/log.txt 2>&1 &` then attach with the `Monitor` tool (or `tail -f`) until it finishes, then move `log.txt` → `review-report.md` (or redirect straight to `review-report.md`). | Minutes to tens of minutes | No inherent timeout                  |
+     | `claude-code` | `claude -p "$(cat .cross-review/packages/<pkg>/review-package.md)" > .cross-review/packages/<pkg>/review-report.md`                  | Any length                | —                                     |
+     | `gemini-cli`  | `gemini --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md`                       | Any length                | —                                     |
+
    - Where the reviewer should save its report: `.cross-review/packages/<pkg>/review-report.md`.
+   - If the reviewer is `codex-mcp` and the package exceeds ~20 KB (rough heuristic for a <60s budget), warn the user that a `-32001 timed out` is likely and offer to switch to `codex-cli` or `codex-auto` for this run.
 
 ## Do not
 

@@ -7,7 +7,7 @@ Step-by-step walkthrough for `multi-model-review`.
 - Claude Code installed and authenticated.
 - `git` on `PATH`. Working directory is a git repo.
 - The **reviewer** model installed — whichever one(s) you plan to use:
-  - Codex CLI: `codex --version` should work.
+  - Codex: either the CLI (`codex --version`) or the Codex MCP server (`mcp__codex__codex` tool available in your session), or both. See [§ Codex — MCP vs CLI vs auto](#codex--mcp-vs-cli-vs-auto) below for when to pick which.
   - Gemini CLI: `gemini --version` should work.
   - Claude Code as reviewer: you'll use `claude -p` in a separate terminal.
   - Any other CLI-capable LLM (Qwen, local Llama, ...) — you'll need a matching template under `templates/`.
@@ -48,23 +48,35 @@ In your target repo, from Claude Code:
 
 Answer the prompts:
 
-| Question              | Typical answer                                                             |
-|-----------------------|----------------------------------------------------------------------------|
-| Builder agent         | `claude-code` (you're in Claude right now, so probably this)               |
-| Reviewer agent        | `codex-cli` / `gemini-cli` / `claude-code` — pick a **different** model    |
-| Base ref              | `main` (or whichever branch you diff against)                              |
-| Spec-kit feature dir  | e.g. `specs/001-auth-rework/` — glob shows what's available                |
+| Question              | Typical answer                                                                                       |
+|-----------------------|------------------------------------------------------------------------------------------------------|
+| Builder agent         | `claude-code` (you're in Claude right now, so probably this)                                         |
+| Reviewer agent        | `codex-auto` / `codex-cli` / `codex-mcp` / `gemini-cli` / `claude-code` — pick a **different** model |
+| Base ref              | `main` (or whichever branch you diff against)                                                        |
+| Spec-kit feature dir  | e.g. `specs/001-auth-rework/` — glob shows what's available                                          |
 
 A config file is written to `.cross-review/config.json`:
 
 ```json
 {
   "builder": "claude-code",
-  "reviewer": "gemini-cli",
+  "reviewer": "codex-auto",
   "base_ref": "main",
   "spec_dir": "specs/001-auth-rework"
 }
 ```
+
+### Codex — MCP vs CLI vs auto
+
+The `mcp__codex__codex` MCP tool has a hard-coded 60-second timeout (`-32001 timed out`). Code review usually does not fit into 60 seconds, so MCP-only setups will fail on most real packages. Pick the mode that matches the review you expect:
+
+| Value (`reviewer`) | Execution method                                      | Suitable for              | Failure signal                        |
+|--------------------|-------------------------------------------------------|---------------------------|---------------------------------------|
+| `codex-mcp`        | `mcp__codex__codex` MCP tool (called inline)          | <60s short validations    | `-32001 timed out` (hardcoded at 60s) |
+| `codex-cli`        | `codex exec ... > log.txt 2>&1 &` + `Monitor` tool    | Minutes to tens of minutes | No inherent timeout                  |
+| `codex-auto` (default) | Heuristic: try MCP first; on `-32001 timed out` (or large package) fall back to `codex-cli` | When unsure | — (self-recovers)            |
+
+If in doubt, use `codex-auto`. Pick `codex-cli` when you already know the review is substantial; pick `codex-mcp` only for short validations (e.g. a 10-line diff against a single-section spec).
 
 `.cross-review/` is added to `.gitignore` unless you explicitly opt in to committing it.
 
@@ -107,9 +119,19 @@ What it does:
 6. Prints the command to run the reviewer. For example:
 
 ```bash
-# reviewer = codex-cli
-codex exec --file .cross-review/packages/20260417-1020-auth-rework/review-package.md \
-  > .cross-review/packages/20260417-1020-auth-rework/review-report.md
+# reviewer = codex-cli   (long-running; no timeout)
+PKG=.cross-review/packages/20260417-1020-auth-rework
+codex exec --file $PKG/review-package.md > $PKG/log.txt 2>&1 &
+# then attach with the Monitor tool, or:  tail -f $PKG/log.txt
+# when it finishes:
+mv $PKG/log.txt $PKG/review-report.md
+
+# reviewer = codex-mcp   (<60s only — the tool itself hard-codes a -32001 timeout)
+# The skill calls the mcp__codex__codex tool for you; no shell command to run.
+
+# reviewer = codex-auto  (default — skill picks MCP or CLI for you)
+# The skill tries MCP first; on -32001 timed out it prints the codex-cli
+# command above and hands control back to you.
 
 # reviewer = gemini-cli
 gemini --file .cross-review/packages/20260417-1020-auth-rework/review-package.md \
@@ -135,12 +157,12 @@ The template inside the package tells the reviewer to produce output in the sche
 
 ### Multi-reviewer triangulation
 
-You can send the same package to more than one reviewer to get independent signals:
+You can send the same package to more than one reviewer to get independent signals. Use the Codex **CLI** form here — the MCP tool's 60s ceiling makes it unreliable for anything past the smallest diffs:
 
 ```bash
 codex  exec --file <pkg>/review-package.md > <pkg>/review-report-codex.md
-gemini --file <pkg>/review-package.md       > <pkg>/review-report-gemini.md
-claude -p "$(cat <pkg>/review-package.md)"  > <pkg>/review-report-claude.md
+gemini --file <pkg>/review-package.md      > <pkg>/review-report-gemini.md
+claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report-claude.md
 ```
 
 Findings that appear in 2+ reports are almost certainly real. Findings unique to one reviewer are where cross-model value lives — but treat them with healthy skepticism.
@@ -237,9 +259,17 @@ Lower the floor: `/multi-model-review:apply-review --min-confidence 50`. Or run 
 
 Your configured reviewer doesn't have a template. Copy an existing one (see "Adding a new reviewer model" above) or change `reviewer` in config.
 
+### Codex returns `-32001 timed out`
+
+The `mcp__codex__codex` MCP tool hard-codes a 60-second timeout. Any non-trivial review will hit it. Options:
+
+- Set `reviewer = codex-auto` (default) so the skill falls back to CLI for you on timeout.
+- Set `reviewer = codex-cli` and run the CLI invocation yourself (`codex exec ... > log.txt 2>&1 &` plus `Monitor`). No inherent timeout — suitable for minutes- to tens-of-minutes-long reviews.
+- Only keep `reviewer = codex-mcp` for tiny validations where you expect well under 60 seconds (single-file diff, checklist check, etc.).
+
 ## FAQ
 
-**Does this call Codex / Gemini / OpenAI / Google from inside Claude?**  No. The plugin only writes and reads files on disk. You run the other model.
+**Does this call Codex / Gemini / OpenAI / Google from inside Claude?**  Mostly no — with one narrow exception. For `reviewer = codex-mcp` or `codex-auto`, the skill may call the `mcp__codex__codex` MCP tool on your behalf, but only for short (<60s) runs. Everything else — `codex-cli`, `claude`, `gemini` — you run yourself. The plugin reads and writes files on disk; it does not call the Codex/Gemini/OpenAI/Google HTTP APIs.
 
 **Can I use it without Spec Kit?**  Yes — ad-hoc mode. Less context for the reviewer, but still useful.
 
