@@ -1,121 +1,147 @@
-# Code Review Request — for Codex CLI (legacy template)
+# Code Review Request for Codex CLI (legacy template)
 
-> **Compatibility note.** This file is kept for 0.1.0 configs where `reviewer = codex-cli`. New configs should pick one of:
->
-> - `codex-auto` → `templates/codex-auto-review-prompt.md` — **default**. MCP-first, CLI fallback on `-32001 timed out`.
-> - `codex-cli` → `templates/codex-cli-review-prompt.md` — explicit long-running CLI (`codex exec ... > log.txt &` + `Monitor`).
-> - `codex-mcp` → `templates/codex-mcp-review-prompt.md` — explicit `mcp__codex__codex` MCP tool; <60s only.
->
-> The command resolver falls through to this file if `codex-cli-review-prompt.md` is missing, preserving older installs.
+> Compatibility note: this file remains for older `codex-cli` configs. New installs should prefer `codex-cli-review-prompt.md`, `codex-auto-review-prompt.md`, or `codex-mcp-review-prompt.md`.
 
-You are acting as an **independent code reviewer**. The code below was written by a different agent (Claude Code) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
+You are acting as an independent code reviewer. The code below was written by a different agent against the specification in section 2. Your job is to find real problems, not to rewrite the code.
 
-This file is self-contained. Do not rely on memory of prior conversations.
+This file is self-contained. Do not rely on prior conversation state.
 
----
+## 1. Package profile
 
-## 1. Specification (`spec.md`)
+- profile: `{{PACKAGE_PROFILE}}`
+- scope: `{{PACKAGE_SCOPE}}`
+- changed files: `{{CHANGED_FILE_COUNT}}`
+- changed lines: `{{CHANGED_LINE_COUNT}}`
 
-> What the change is supposed to accomplish.
+## 2. Spec brief
 
 ```markdown
-{{SPEC}}
+{{SPEC_BRIEF}}
 ```
 
-## 2. Implementation plan (`plan.md`)
-
-> How the builder agent intended to implement it.
+## 3. Implementation brief
 
 ```markdown
-{{PLAN}}
+{{PLAN_BRIEF}}
 ```
 
-## 3. Task breakdown (`tasks.md`)
-
-> The ordered list the builder worked through.
+## 4. Task brief
 
 ```markdown
-{{TASKS}}
+{{TASKS_BRIEF}}
 ```
 
-## 4. Project rules (`CLAUDE.md`)
-
-> Rules the builder agent was operating under. The reviewer should check the diff against these — violations count as findings.
+## 5. Relevant project rules
 
 ```markdown
-{{CLAUDE_MD}}
+{{RULES_BRIEF}}
 ```
 
-## 5. Commit trail
+## 6. Commit trail
 
-Base: `{{BASE_REF}}` → Head: `{{HEAD_REF}}`
+Base: `{{BASE_REF}}`  Head: `{{HEAD_REF}}`
 
+```text
+{{LOG_BRIEF}}
 ```
-{{LOG}}
+
+## 7. Diff manifest
+
+```text
+{{DIFF_MANIFEST}}
 ```
 
-## 6. The diff under review
+## 8. Focused diff excerpts
 
 ```diff
-{{DIFF}}
+{{DIFF_EXCERPTS}}
 ```
 
----
+## 9. Context notes
+
+{{PACKAGE_NOTES}}
+
+## 10. Optional appendices
+
+### Spec appendix
+
+```markdown
+{{SPEC_APPENDIX}}
+```
+
+### Plan appendix
+
+```markdown
+{{PLAN_APPENDIX}}
+```
+
+### Tasks appendix
+
+```markdown
+{{TASKS_APPENDIX}}
+```
+
+### Rules appendix
+
+```markdown
+{{RULES_APPENDIX}}
+```
+
+### Raw diff appendix
+
+```diff
+{{RAW_DIFF_APPENDIX}}
+```
 
 ## Your task
 
-Produce a review report that follows this schema exactly — write it to `{{REPORT_PATH}}`:
+Produce a review report that follows this schema exactly:
 
 ```markdown
 # Review report
+
+## Context sufficiency
+<one of: sufficient | limited-but-actionable | needs-full-package>
 
 ## Verdict
 <one of: approve | approve-with-nits | changes-requested | reject>
 
 ## Summary
-<2–4 sentences, neutral tone>
+<2-3 sentences, neutral tone>
 
 ## Findings
 
 ### F1
 - severity: <critical | major | minor | info>
-- confidence: <0–100>
+- confidence: <0-100>
 - location: <path/to/file.ext:LINE or path/to/file.ext>
 - summary: <one line>
-- detail: <1–3 sentences of evidence>
-- suggested_fix: <optional — concrete suggestion or `n/a`>
-
-### F2
-...
+- detail: <1-3 sentences of evidence>
+- suggested_fix: <concrete suggestion or n/a>
 ```
 
-### Review checklist
+## Review checklist
 
-1. **Spec alignment** — does the diff actually implement what `spec.md` and `tasks.md` claim? Missing tasks are findings.
-2. **CLAUDE.md adherence** — every rule in the CLAUDE.md section is reviewable. If the diff violates one, file a finding.
-3. **Correctness** — bugs, off-by-one, null/undefined handling, concurrency, error paths, edge cases.
-4. **Security** — injection, deserialization, secret handling, authN/Z, input validation at trust boundaries.
-5. **Diff hygiene** — dead code, unrelated changes, commented-out blocks, debug prints.
+1. Spec alignment
+2. Rules adherence
+3. Correctness
+4. Security
+5. Diff hygiene
+6. Context sufficiency
 
-### What not to flag
+## What not to flag
 
-- Style issues that a linter/formatter would catch.
-- Missing tests, unless CLAUDE.md explicitly requires them for this change.
-- Opinionated refactors not called out in `spec.md` or `plan.md`.
-- Pre-existing issues outside the diff.
+- formatter-only issues
+- missing tests unless the rules explicitly require them
+- opinionated refactors outside the spec
+- pre-existing issues outside the diff
 
-### Confidence scoring
+## Confidence scoring
 
-- **100** — certain, evidence in the diff directly confirms the issue.
-- **80** — high confidence, cross-checked against spec/CLAUDE.md.
-- **60** — likely but not verified from the package alone.
-- **40** — plausible concern, reviewer would want to ask.
-- **20** — hunch.
+- 100: certain
+- 80: high confidence
+- 60: likely but not fully verified
+- 40: plausible concern
+- 20: hunch
 
-Only findings with confidence ≥ 70 will be shown to the builder by default.
-
----
-
-## Output contract
-
-Write the report to `{{REPORT_PATH}}` as a single markdown file. Do not edit any other files. Do not fetch external resources — everything you need is in this package.
+Only findings with confidence >= 70 are shown to the builder by default.

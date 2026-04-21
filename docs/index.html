@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>multi-model-review — Multi-model code review for Spec-Driven Development</title>
-  <meta name="description" content="Build with one LLM (Claude / Codex / Gemini), review with another. A Claude Code plugin that turns GitHub Spec Kit artifacts into a portable cross-model review handoff.">
+  <title>multi-model-review - Multi-model code review for Spec-Driven Development</title>
+  <meta name="description" content="Build with one model, review with another. A Claude Code plugin that turns GitHub Spec Kit artifacts and diffs into a compact cross-model review handoff.">
   <meta property="og:title" content="multi-model-review">
-  <meta property="og:description" content="Multi-model code review for Spec-Driven Development. Build with one LLM, review with another.">
+  <meta property="og:description" content="Compact-first multi-model code review for Spec-Driven Development.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://formin.github.io/multi-model-review/">
   <style>
@@ -143,26 +143,25 @@
     <section class="hero">
       <h1>multi-model-review</h1>
       <p class="tagline">Multi-model code review for Spec-Driven Development.</p>
-      <p>Build with <strong>one</strong> LLM (Claude&nbsp;Code, Codex&nbsp;CLI, Gemini&nbsp;CLI, ...), review with a <strong>different</strong> one. A Claude Code plugin built on top of <a href="https://github.com/github/spec-kit">GitHub Spec Kit</a>.</p>
+      <p>Build with <strong>one</strong> model, review with a <strong>different</strong> one. A Claude Code plugin built on top of <a href="https://github.com/github/spec-kit">GitHub Spec Kit</a>.</p>
       <div class="badges">
-        <span class="badge">v0.1.0</span>
+        <span class="badge">Compact-first</span>
+        <span class="badge">Claude / Codex / Gemini</span>
         <span class="badge">MIT</span>
-        <span class="badge">Claude · Codex · Gemini</span>
       </div>
       <div>
-        <a class="cta" href="https://github.com/formin/multi-model-review">View on GitHub →</a>
+        <a class="cta" href="https://github.com/formin/multi-model-review">View on GitHub</a>
       </div>
     </section>
 
     <section>
       <h2>Why multi-model?</h2>
-      <p>A single LLM reviewing its own output tends to rationalize rather than challenge. A <em>different</em> model reading the same spec and diff has:</p>
+      <p>A model reviewing its own output often rationalizes. A different model can catch different classes of issues, and this project makes that handoff cheap enough to do regularly.</p>
       <ul>
-        <li>Different training data — catches issues the builder's model is blind to.</li>
-        <li>Different calibration on severity — less confirmation bias.</li>
-        <li>Different house style — flags idiomatic drift the builder normalizes.</li>
+        <li>portable markdown package instead of shared session state</li>
+        <li>compact-first packaging to reduce token cost</li>
+        <li>confidence-gated findings for easier remediation</li>
       </ul>
-      <p>Because the handoff is plain markdown on disk, the two models never have to talk to each other — and any LLM with a CLI can play reviewer.</p>
     </section>
 
     <div class="ad-slot">
@@ -174,50 +173,53 @@
     </div>
 
     <section>
+      <h2>Compact-first review packages</h2>
+      <p>The default package is no longer a full dump of <code>spec.md</code>, <code>plan.md</code>, <code>tasks.md</code>, and the raw diff. It now starts with focused summaries and high-signal excerpts inspired by <a href="https://github.com/rtk-ai/rtk">RTK</a>.</p>
+      <table>
+        <thead>
+          <tr><th>Profile</th><th>Use case</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>micro</code></td><td>tiny MCP-sized review loops</td></tr>
+          <tr><td><code>compact</code></td><td>default balanced package</td></tr>
+          <tr><td><code>full</code></td><td>escalation pass when the reviewer needs more context</td></tr>
+        </tbody>
+      </table>
+      <p>If a reviewer needs more information, it can say <code>Context sufficiency: needs-full-package</code> and the builder reruns packaging with <code>--full</code> or narrows the scope with <code>--paths</code>.</p>
+    </section>
+
+    <section>
       <h2>Install</h2>
-      <p><strong>Slash commands (<code>/plugin …</code>) are typed inside a Claude Code session — not at your OS shell.</strong> Running them at PowerShell or bash returns <code>'/plugin' is not recognized</code>. Shell commands (<code>claude …</code>, <code>git …</code>) go at your OS shell.</p>
-      <p>In a Claude Code session:</p>
+      <p><strong>Slash commands such as <code>/plugin install</code> run inside Claude Code, not at your OS shell.</strong></p>
       <pre><code>/plugin install multi-model-review@multi-model-review</code></pre>
-      <p>Or at your OS shell (equivalent):</p>
+      <p>Or at the OS shell:</p>
       <pre><code>claude plugin install multi-model-review@multi-model-review
 claude plugin list</code></pre>
-      <p>Then run <code>/reload-plugins</code> (or restart Claude Code). Three slash commands (<code>/multi-model-review:cross-review</code>, <code>/multi-model-review:review-package</code>, <code>/multi-model-review:apply-review</code>) will appear in the picker.</p>
-      <h3>Update or reinstall</h3>
-      <ul>
-        <li>Update (in Claude Code): <code>/plugin update multi-model-review@multi-model-review</code> — or at your shell: <code>claude plugin update multi-model-review@multi-model-review</code>.</li>
-        <li>Uninstall (in Claude Code): <code>/plugin uninstall multi-model-review@multi-model-review</code></li>
-        <li>For a clean reinstall, uninstall then install again.</li>
-        <li>Dev-mode (<code>claude --plugin-dir</code>) clone already exists? At the shell, <code>git pull</code> inside it, or delete the directory (<code>Remove-Item -Recurse -Force</code> on PowerShell / <code>rm -rf</code> elsewhere) and re-clone.</li>
-      </ul>
+      <p>Then run <code>/reload-plugins</code> or restart Claude Code.</p>
     </section>
 
     <section>
       <h2>Commands</h2>
-      <p>Claude Code namespaces plugin commands as <code>/&lt;plugin-name&gt;:&lt;command&gt;</code>. This plugin provides three:</p>
       <table>
         <thead>
           <tr><th>Invocation</th><th>Purpose</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>/multi-model-review:cross-review [init|status]</code></td><td>Init config or show roles, base ref, and packages.</td></tr>
-          <tr><td><code>/multi-model-review:review-package [slug] [--base &lt;ref&gt;]</code></td><td>Export the handoff bundle for the reviewer model.</td></tr>
-          <tr><td><code>/multi-model-review:apply-review [path] [--min-confidence N]</code></td><td>Ingest the reviewer's report and drive remediation.</td></tr>
+          <tr><td><code>/multi-model-review:cross-review [init|status]</code></td><td>configure builder, reviewer, base ref, and default package profile</td></tr>
+          <tr><td><code>/multi-model-review:review-package [slug] [--base &lt;ref&gt;] [--full] [--paths &lt;glob,...&gt;]</code></td><td>export the compact reviewer handoff</td></tr>
+          <tr><td><code>/multi-model-review:apply-review [path] [--min-confidence N]</code></td><td>ingest the review report and walk through fixes</td></tr>
         </tbody>
       </table>
     </section>
 
     <section>
-      <h2>Supported reviewers</h2>
-      <p>Out of the box: Claude, Codex, Gemini. Adding a new reviewer is a one-file change — drop <code>templates/&lt;id&gt;-review-prompt.md</code> and reference the ID in <code>.cross-review/config.json</code>.</p>
-    </section>
-
-    <section>
       <h2>Quick workflow</h2>
       <ol>
-        <li>Run <code>/multi-model-review:cross-review init</code> to set builder/reviewer roles.</li>
-        <li>Build your change (Spec Kit or ad-hoc), then <code>/multi-model-review:review-package</code> to export a handoff bundle.</li>
-        <li>Run the reviewer model on the bundle in a separate terminal.</li>
-        <li>Run <code>/multi-model-review:apply-review</code> to ingest findings and walk through fixes.</li>
+        <li>Run <code>/multi-model-review:cross-review init</code>.</li>
+        <li>Implement the feature with your builder model.</li>
+        <li>Run <code>/multi-model-review:review-package</code> to create a compact package.</li>
+        <li>Run the reviewer model on that package in another terminal.</li>
+        <li>Run <code>/multi-model-review:apply-review</code> to apply accepted findings.</li>
       </ol>
     </section>
 
@@ -225,15 +227,17 @@ claude plugin list</code></pre>
       <h2>Learn more</h2>
       <ul>
         <li><a href="https://github.com/formin/multi-model-review">GitHub repository</a></li>
-        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/USAGE.md">Step-by-step usage guide</a></li>
-        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/EXAMPLE.md">Worked example (Claude builds → Codex reviews → Claude applies fixes)</a></li>
         <li><a href="https://github.com/formin/multi-model-review/blob/main/README.md">README</a></li>
-        <li><a href="https://github.com/github/spec-kit">GitHub Spec Kit (upstream)</a></li>
+        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/USAGE.md">Usage guide</a></li>
+        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/EXAMPLE.md">Worked example</a></li>
+        <li><a href="https://github.com/formin/multi-model-review/blob/main/docs/TOKEN_EFFICIENCY.md">Token efficiency notes</a></li>
+        <li><a href="https://github.com/github/spec-kit">GitHub Spec Kit</a></li>
+        <li><a href="https://github.com/rtk-ai/rtk">RTK</a></li>
       </ul>
     </section>
 
     <footer>
-      <p>MIT License · © 2026 <a href="https://github.com/formin">formin</a> · <a href="https://github.com/formin/multi-model-review/issues">Report an issue</a></p>
+      <p>MIT License · 2026 <a href="https://github.com/formin">formin</a> · <a href="https://github.com/formin/multi-model-review/issues">Report an issue</a></p>
     </footer>
   </main>
 

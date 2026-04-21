@@ -1,5 +1,5 @@
 ---
-description: Init config or show status for the multi-model-review workflow.
+description: Initialize config or show status for the multi-model-review workflow.
 argument-hint: [init|status]
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 ---
@@ -12,29 +12,57 @@ Arguments: `$ARGUMENTS`
 
 ## Behavior
 
-No second arg or `status`:
-- Read `.cross-review/config.json` and report: builder role, reviewer role, base ref, most recent package directory and its state (awaiting-review / report-received / applied).
-- If `.cross-review/config.json` is absent, prompt the user to run `/multi-model-review:cross-review init`.
+No argument or `status`:
+
+- Read `.cross-review/config.json`
+- Report:
+  - builder
+  - reviewer
+  - base ref
+  - default package profile
+  - most recent package directory and whether it was `micro`, `compact`, or `full`
+- If config is missing, prompt the user to run `/multi-model-review:cross-review init`
 
 `init`:
-- Interactively create `.cross-review/config.json`. Ask in order:
-  1. Which agent is the **builder**? (`claude-code` | `codex-cli` | `codex-mcp` | `codex-auto` | `gemini-cli` | custom ID)
-  2. Which agent is the **reviewer**? Confirm it's different from the builder; warn (don't block) if identical.
-     - For Codex, offer the three execution modes and explain them:
-       - `codex-auto` — **default**. Heuristic: try MCP first; on `-32001` timeout, fall back to CLI.
-       - `codex-cli` — `codex exec ... > log.txt &` plus `Monitor` tool. Pick for reviews that may take minutes to tens of minutes.
-       - `codex-mcp` — `mcp__codex__codex` tool. Only for <60s validations; the MCP tool hard-codes a `-32001 timed out` error at 60s.
-  3. Base ref to diff against (default: `main`).
-  4. Spec-kit feature directory — glob `specs/*/` and let the user pick one, or skip for ad-hoc mode.
-- Write the config.
-- Add `.cross-review/` to `.gitignore` unless the user opts in to committing it.
+
+1. Ask which agent is the builder.
+   - `claude-code`
+   - `codex-cli`
+   - `codex-mcp`
+   - `codex-auto`
+   - `gemini-cli`
+   - custom ID
+
+2. Ask which agent is the reviewer.
+   - warn, but do not block, if builder and reviewer are the same
+   - for Codex, explain:
+     - `codex-auto`: default
+     - `codex-cli`: long-running reviews
+     - `codex-mcp`: short MCP checks only
+
+3. Ask for base ref.
+   - default `main`
+
+4. Ask for default package profile.
+   - `compact` (recommended)
+   - `full`
+   - `micro` (only appropriate for MCP smoke checks)
+   - if reviewer is `codex-mcp`, force `micro`
+
+5. Ask for the Spec Kit feature directory.
+   - offer `specs/*/` choices when available
+   - allow ad-hoc mode
+
+6. Write `.cross-review/config.json`.
+
+7. Add `.cross-review/` to `.gitignore` unless the user explicitly wants to commit it.
 
 ## Output style
 
-Short. One section per piece of information. No emojis. Link files as `.cross-review/config.json` etc. so the user can click through.
+Keep status output short and scannable.
 
 ## Refer to
 
-- `/multi-model-review:review-package` — export the handoff bundle for the reviewer
-- `/multi-model-review:apply-review` — ingest the reviewer's report
-- Skill: `skills/multi-model-review/SKILL.md`
+- `/multi-model-review:review-package`
+- `/multi-model-review:apply-review`
+- `skills/multi-model-review/SKILL.md`

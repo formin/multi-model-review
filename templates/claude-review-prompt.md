@@ -1,113 +1,145 @@
-# Code Review Request — for Claude Code
+# Code Review Request for Claude Code
 
-You are acting as an **independent code reviewer**. The code below was written by a different agent (Codex CLI) against the specification in section 1. Your job is to find real problems, not to rewrite the code.
+You are acting as an independent code reviewer. The code below was written by a different agent against the specification in section 2. Your job is to find real problems, not to rewrite the code.
 
-This file is self-contained. Do not rely on memory of prior conversations.
+This file is self-contained. Do not rely on prior conversation state.
 
----
+## 1. Package profile
 
-## 1. Specification (`spec.md`)
+- profile: `{{PACKAGE_PROFILE}}`
+- scope: `{{PACKAGE_SCOPE}}`
+- changed files: `{{CHANGED_FILE_COUNT}}`
+- changed lines: `{{CHANGED_LINE_COUNT}}`
 
-> What the change is supposed to accomplish.
-
-```markdown
-{{SPEC}}
-```
-
-## 2. Implementation plan (`plan.md`)
-
-> How the builder agent intended to implement it.
+## 2. Spec brief
 
 ```markdown
-{{PLAN}}
+{{SPEC_BRIEF}}
 ```
 
-## 3. Task breakdown (`tasks.md`)
-
-> The ordered list the builder worked through.
+## 3. Implementation brief
 
 ```markdown
-{{TASKS}}
+{{PLAN_BRIEF}}
 ```
 
-## 4. Project rules (`CLAUDE.md`)
-
-> Rules the builder agent was operating under. The reviewer should check the diff against these — violations count as findings.
+## 4. Task brief
 
 ```markdown
-{{CLAUDE_MD}}
+{{TASKS_BRIEF}}
 ```
 
-## 5. Commit trail
+## 5. Relevant project rules
 
-Base: `{{BASE_REF}}` → Head: `{{HEAD_REF}}`
-
-```
-{{LOG}}
+```markdown
+{{RULES_BRIEF}}
 ```
 
-## 6. The diff under review
+## 6. Commit trail
+
+Base: `{{BASE_REF}}`  Head: `{{HEAD_REF}}`
+
+```text
+{{LOG_BRIEF}}
+```
+
+## 7. Diff manifest
+
+```text
+{{DIFF_MANIFEST}}
+```
+
+## 8. Focused diff excerpts
 
 ```diff
-{{DIFF}}
+{{DIFF_EXCERPTS}}
 ```
 
----
+## 9. Context notes
+
+{{PACKAGE_NOTES}}
+
+## 10. Optional appendices
+
+### Spec appendix
+
+```markdown
+{{SPEC_APPENDIX}}
+```
+
+### Plan appendix
+
+```markdown
+{{PLAN_APPENDIX}}
+```
+
+### Tasks appendix
+
+```markdown
+{{TASKS_APPENDIX}}
+```
+
+### Rules appendix
+
+```markdown
+{{RULES_APPENDIX}}
+```
+
+### Raw diff appendix
+
+```diff
+{{RAW_DIFF_APPENDIX}}
+```
 
 ## Your task
 
-Produce a review report that follows this schema exactly — write it to `{{REPORT_PATH}}`:
+Produce a review report that follows this schema exactly:
 
 ```markdown
 # Review report
+
+## Context sufficiency
+<one of: sufficient | limited-but-actionable | needs-full-package>
 
 ## Verdict
 <one of: approve | approve-with-nits | changes-requested | reject>
 
 ## Summary
-<2–4 sentences, neutral tone>
+<2-3 sentences, neutral tone>
 
 ## Findings
 
 ### F1
 - severity: <critical | major | minor | info>
-- confidence: <0–100>
+- confidence: <0-100>
 - location: <path/to/file.ext:LINE or path/to/file.ext>
 - summary: <one line>
-- detail: <1–3 sentences of evidence>
-- suggested_fix: <optional — concrete suggestion or `n/a`>
-
-### F2
-...
+- detail: <1-3 sentences of evidence>
+- suggested_fix: <concrete suggestion or n/a>
 ```
 
-### Review checklist
+## Review checklist
 
-1. **Spec alignment** — does the diff actually implement what `spec.md` and `tasks.md` claim? Missing tasks are findings.
-2. **CLAUDE.md adherence** — every rule in the CLAUDE.md section is reviewable. If the diff violates one, file a finding.
-3. **Correctness** — bugs, off-by-one, null/undefined handling, concurrency, error paths, edge cases.
-4. **Security** — injection, deserialization, secret handling, authN/Z, input validation at trust boundaries.
-5. **Diff hygiene** — dead code, unrelated changes, commented-out blocks, debug prints.
+1. Spec alignment
+2. Rules adherence
+3. Correctness
+4. Security
+5. Diff hygiene
+6. Context sufficiency
 
-### What not to flag
+## What not to flag
 
-- Style issues that a linter/formatter would catch.
-- Missing tests, unless CLAUDE.md explicitly requires them for this change.
-- Opinionated refactors not called out in `spec.md` or `plan.md`.
-- Pre-existing issues outside the diff.
+- formatter-only issues
+- missing tests unless the rules explicitly require them
+- opinionated refactors outside the spec
+- pre-existing issues outside the diff
 
-### Confidence scoring
+## Confidence scoring
 
-- **100** — certain, evidence in the diff directly confirms the issue.
-- **80** — high confidence, cross-checked against spec/CLAUDE.md.
-- **60** — likely but not verified from the package alone.
-- **40** — plausible concern, reviewer would want to ask.
-- **20** — hunch.
+- 100: certain
+- 80: high confidence
+- 60: likely but not fully verified
+- 40: plausible concern
+- 20: hunch
 
-Only findings with confidence ≥ 70 will be shown to the builder by default.
-
----
-
-## Output contract
-
-Write the report to `{{REPORT_PATH}}` as a single markdown file. Do not edit any other files. Do not fetch external resources — everything you need is in this package.
+Only findings with confidence >= 70 are shown to the builder by default.

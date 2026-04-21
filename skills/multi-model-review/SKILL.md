@@ -1,162 +1,188 @@
 ---
 name: multi-model-review
-description: This skill should be used when the user asks to run a multi-model / cross-agent code review ("build with Claude, review with Codex", "have Gemini review this", "get a second opinion from another model", "cross-review"), wants to bridge spec-kit artifacts between Claude Code, Codex CLI, Gemini CLI, or any other agent, or invokes `/multi-model-review:cross-review`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`. It coordinates the "builder vs reviewer" handoff using portable spec/plan/tasks/diff artifacts — never calls the other agent directly; instead produces a review-package file the user feeds to the chosen reviewer model, and ingests the review report that comes back. Reviewer selection is template-driven, so any agent with a matching `templates/<agent>-review-prompt.md` works.
-version: 0.1.0
+description: Use this skill when the user wants a cross-model code review workflow on top of Spec Kit artifacts, or invokes /multi-model-review:cross-review, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill exports a compact review package for another model, then ingests that model's review report.
+version: 0.2.0
 license: MIT
 ---
 
 # Multi-Model Spec Review
 
-Coordinate a "builder agent vs reviewer agent" workflow across different LLMs (Claude, Codex, Gemini, Qwen, ...) on top of GitHub Spec Kit artifacts. The skill does not invoke the other agent — it produces a portable handoff package, and ingests the review report the user brings back.
+Coordinate a "builder agent vs reviewer agent" workflow across different LLMs on top of GitHub Spec Kit artifacts. The skill does not invoke the other model directly. It creates a portable handoff package, and later ingests the review report the user brings back.
 
 ## When to activate
 
 Activate when the user:
 
-- Asks to "review with Codex" / "review with Gemini" / "review with Claude" / "cross-review" / "second opinion from another model"
-- Wants to split build and review across different LLMs (Claude Code, Codex CLI, Gemini CLI, etc.)
-- Mentions spec-kit artifacts (`spec.md`, `plan.md`, `tasks.md`) in a review context
-- Invokes `/multi-model-review:cross-review`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`
+- asks to review with another model
+- wants a second opinion from Codex, Gemini, Claude, or another CLI model
+- mentions Spec Kit artifacts in a review context
+- invokes `/multi-model-review:cross-review`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`
 
 ## Mental model
 
-```
-                 spec.md   plan.md   tasks.md   diff
-                    \        |         /         /
-                     \       |        /         /
-                      +------v-------+---------+
-                      |  review-package.md     |  <-- portable, model-agnostic
-                      +-----------+------------+
-                                  |
-                 user runs the OTHER model on this file
-                                  |
-                      +-----------v------------+
-                      |  review-report.md      |  <-- reviewer writes this
-                      +-----------+------------+
-                                  |
-                     builder ingests & addresses findings
+```text
+spec.md   plan.md   tasks.md   diff
+   \         |        /        /
+    \        |       /        /
+     +-------v------+--------+
+     | review-package.md     |
+     +-----------+-----------+
+                 |
+      user runs the OTHER model
+                 |
+     +-----------v-----------+
+     | review-report.md      |
+     +-----------+-----------+
+                 |
+      builder ingests findings
 ```
 
-The skill owns two directions of the pipe:
+The skill owns two directions:
 
-1. **Export** — gather spec-kit artifacts + diff + context into a single review-package file.
-2. **Ingest** — parse the review-report file the other model produced and drive remediation.
+1. **Export**: gather spec and git context into a compact review package
+2. **Ingest**: parse the review report and drive remediation
 
 ## Directory convention
 
-All handoff files live under `.cross-review/` at the repo root:
-
-```
+```text
 .cross-review/
-  config.json                    # builder/reviewer roles, base ref
+  config.json
   packages/<timestamp>-<slug>/
-    review-package.md            # what the reviewer reads
-    review-report.md             # what the reviewer writes back
-    metadata.json                # base ref, head ref, builder, reviewer
+    review-package.md
+    review-report.md
+    metadata.json
 ```
 
-If `.cross-review/config.json` is absent, create it on first use. Ask the user:
+Recommended `config.json` keys:
 
-- Which agent is the **builder** (any of: `claude-code`, `codex-cli`, `gemini-cli`, or any identifier the user has a template for)?
-- Which agent is the **reviewer** (a *different* one — the whole point is a different model's perspective)?
-- What is the **base ref** to diff against (default: `main`)?
-- Is there a spec-kit project initialized (look for `specs/*/spec.md`)?
+- `builder`
+- `reviewer`
+- `base_ref`
+- `spec_dir`
+- `package_profile`
 
-Warn (don't block) if builder == reviewer: the value of this workflow is cross-model perspective.
+## Export flow
 
-## Export flow (`/multi-model-review:review-package`)
+Build a self-contained markdown package. Default to **compact-first** packaging.
 
-Build a self-contained markdown file the reviewer model can read with zero other context.
+### 1. Resolve the feature
 
-1. Resolve the spec-kit feature directory:
-   - If user gave a slug, use `specs/<slug>/`
-   - Else pick the most recently modified `specs/*/` directory
-   - If no spec-kit project exists, fall back to "ad-hoc" mode: describe the change from the diff alone
+- If the user gave a slug, use `specs/<slug>/`
+- Else pick the most recently modified `specs/*/`
+- If no Spec Kit directory exists, fall back to ad-hoc diff-only mode
 
-2. Collect inputs:
-   - `specs/<slug>/spec.md` (what)
-   - `specs/<slug>/plan.md` (how)
-   - `specs/<slug>/tasks.md` (steps)
-   - `git diff <base>...HEAD` (the change under review)
-   - `git log <base>...HEAD --oneline` (commit trail)
-   - Root `CLAUDE.md` and any `CLAUDE.md` in directories the diff touched (the builder's rules — the reviewer should know them)
+### 2. Resolve scope
 
-3. Assemble `review-package.md` using the template at `templates/<reviewer>-review-prompt.md` (e.g. `codex-review-prompt.md`, `claude-review-prompt.md`, `gemini-review-prompt.md`). If no template matches the configured reviewer, prompt the user to drop in a new template file — the plugin is extensible by file convention, no code change needed. The template wraps the collected inputs in a reviewer-role prompt that instructs the reviewer to:
-   - Check spec-to-code alignment (does the diff actually implement what `spec.md` and `tasks.md` say?)
-   - Flag bugs, security issues, and CLAUDE.md violations
-   - Score each finding 0–100 for confidence
-   - Output a `review-report.md` file in the exact format in `templates/review-report.md`
+- Base ref: config value or `main`
+- Optional path filter from `--paths`
+- Reviewer mode:
+  - `codex-mcp` implies `micro`
+  - `codex-auto`, `codex-cli`, `claude-code`, `gemini-cli` should default to `compact`
+  - `--full` overrides to `full`
 
-4. Write outputs under `.cross-review/packages/<YYYYMMDD-HHMM>-<slug>/`:
-   - `review-package.md`
-   - `metadata.json` with base/head commits + roles
+### 3. Gather raw inputs
 
-5. Print the reviewer command the user should run next. For Codex, the exact command depends on `config.reviewer`:
+- `spec.md`
+- `plan.md`
+- `tasks.md`
+- `git diff <base>...HEAD`
+- `git log <base>...HEAD --oneline`
+- relevant `CLAUDE.md` files
 
-   | Reviewer ID   | Execution method                                                                                         | Suitable for            | Failure signal                        |
-   |---------------|----------------------------------------------------------------------------------------------------------|-------------------------|---------------------------------------|
-   | `codex-mcp`   | `mcp__codex__codex` MCP tool, called inline with the package contents as the prompt                      | <60s short validations  | `-32001 timed out` (hardcoded at 60s) |
-   | `codex-cli`   | `codex exec --file <pkg>/review-package.md > <pkg>/log.txt 2>&1 &` then the `Monitor` tool until it exits | Minutes to tens of minutes | No inherent timeout                |
-   | `codex-auto`  | **Default.** Heuristic — try `codex-mcp` first; on `-32001 timed out` or if the diff is obviously long, fall back to `codex-cli`. | When unsure         | —                                    |
-   | `claude-code` | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md`                                    | Any length              | —                                    |
-   | `gemini-cli`  | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md`                                         | Any length              | —                                    |
+### 4. Reduce the package before rendering
 
-**Do not** try to invoke the other model yourself. The handoff is user-driven — *unless* `reviewer` is `codex-auto` or `codex-mcp`, in which case the skill may call the `mcp__codex__codex` tool on the user's behalf (short path only). For `codex-cli` the user always runs the command themselves, because long-running background processes belong on the user's shell, not inside the skill's request/response cycle.
+Use RTK-style reduction:
 
-### codex-auto fallback logic
+- **Filtering**: drop generated noise, lockfile churn, snapshots, vendored paths unless the feature depends on them
+- **Grouping**: create a grouped diff manifest before raw hunks
+- **Truncation**: cap logs, long task lists, repeated rule text, and low-signal hunks
+- **Deduplication**: collapse repeated context
 
-When `reviewer = codex-auto`, after writing the package:
+Create these placeholders:
 
-1. Estimate package size. If it is > ~20 KB or the diff touches > ~20 files, skip MCP and go straight to CLI — a 60s budget is unrealistic.
-2. Otherwise, call the `mcp__codex__codex` tool with the package contents as the prompt.
-3. If the tool returns `-32001 timed out` (or any timeout error), print the `codex-cli` invocation and hand control back to the user. Do not retry MCP.
-4. On MCP success, write the returned text to `<pkg>/review-report.md` and continue to the ingest phase.
+- `SPEC_BRIEF`
+- `PLAN_BRIEF`
+- `TASKS_BRIEF`
+- `RULES_BRIEF`
+- `LOG_BRIEF`
+- `DIFF_MANIFEST`
+- `DIFF_EXCERPTS`
+- `PACKAGE_NOTES`
 
-## Ingest flow (`/multi-model-review:apply-review`)
+Appendix placeholders:
 
-The user has run the reviewer model and saved its output as `review-report.md` in the package directory (or pasted its content).
+- `SPEC_APPENDIX`
+- `PLAN_APPENDIX`
+- `TASKS_APPENDIX`
+- `RULES_APPENDIX`
+- `RAW_DIFF_APPENDIX`
 
-1. Locate the latest package dir under `.cross-review/packages/` unless the user specified one.
-2. Read `review-report.md`. It should follow the schema in `templates/review-report.md`:
-   - Findings list, each with: severity, confidence (0–100), file:line, description, suggested fix
-   - Optional overall verdict
-3. Filter: by default drop findings with confidence < 70 unless the user asks for all.
-4. Present findings as a prioritized checklist. Do not auto-edit code.
-5. For each accepted finding, walk the user through the fix — read the file, propose an edit, apply it after confirmation.
-6. After fixes land, remind the user they can run `/multi-model-review:review-package` again for a second pass, optionally with a *different* reviewer model to triangulate.
+Rules:
 
-## Role swap & adding new reviewers
+- In `compact` and `micro`, appendices should be short omission notes, not raw dumps.
+- In `full`, appendices may include the raw source material.
+- If RTK is installed, prefer RTK-assisted summaries when gathering shell output. If it is not installed, create equivalent summaries manually.
 
-The same skill handles every direction. The only things that change between "Claude builds / Codex reviews", "Codex builds / Gemini reviews", "Gemini builds / Claude reviews", etc. are:
+### 5. Render the reviewer template
 
-- Which model is active when `/multi-model-review:review-package` runs (the builder)
-- Which template is used to wrap the package — lookup is `templates/<reviewer>-review-prompt.md`
-- Which model is active when `/multi-model-review:apply-review` runs (the builder, again)
+Use `templates/<reviewer>-review-prompt.md`.
 
-Record the roles in `.cross-review/config.json` so subsequent runs don't re-ask.
+The template must tell the reviewer to:
 
-**Adding a new reviewer** (e.g. Qwen, Mistral, a local model): drop a new file at `templates/<new-reviewer>-review-prompt.md` following the shape of the existing ones, then use that reviewer ID in config. No code change needed.
+- validate spec-to-code alignment
+- find real correctness, security, and rule issues
+- score confidence 0-100
+- report `Context sufficiency`
+- write `review-report.md` using `templates/review-report.md`
+
+### 6. Write outputs
+
+Write:
+
+- `review-package.md`
+- `metadata.json` with base/head, roles, profile, and truncation notes
+
+### 7. Print the next command
+
+Print the exact reviewer command and the output path for `review-report.md`.
+
+If the report later says `Context sufficiency: needs-full-package`, tell the user to rerun:
+
+- `/multi-model-review:review-package --full`
+- or `/multi-model-review:review-package --paths <subset>`
+
+## Ingest flow
+
+Read the latest `review-report.md` unless the user points to a specific package directory.
+
+Parse:
+
+- `Context sufficiency`
+- `Verdict`
+- `Summary`
+- `Findings`
+
+Default handling:
+
+- drop findings with confidence below 70
+- group remaining findings by severity and file
+- do not edit until the user accepts a finding
+
+Special handling:
+
+- if `Context sufficiency = needs-full-package`, stop before making broad edits and recommend a `--full` or `--paths` rerun
+- never auto-apply a `critical` finding without explicit approval
 
 ## Important constraints
 
-- **No side calls to external models** — with one exception. The skill must not shell out to Codex CLI, Gemini, or invoke Claude via the API. The sole exception is the `mcp__codex__codex` MCP tool under `codex-mcp` / `codex-auto` reviewer IDs, and only for the short-path case (<60s). Any other invocation must be left to the user.
-- **Artifacts only.** All state lives in `.cross-review/` and the spec-kit `specs/` tree. Nothing else.
-- **Never auto-apply a finding with confidence < 70**, even if the user has approved the whole batch — re-confirm for each low-confidence item.
-- **Never escalate severity.** If the reviewer marked a finding "minor", do not re-rank it to "critical" during ingest.
-- **Preserve the reviewer's language.** When summarizing findings to the user, quote the report; don't paraphrase the reviewer into agreement. Different models have different calibration — their own wording matters.
-
-## Related commands
-
-- `/multi-model-review:cross-review [init|status]` — interactive config / status
-- `/multi-model-review:review-package [slug] [--base <ref>]` — export flow
-- `/multi-model-review:apply-review [package-dir] [--min-confidence N]` — ingest flow
+- Do not run the reviewer model for the user.
+- Do not package secrets.
+- Do not dump raw artifacts in compact mode just because they are available.
+- Preserve the reviewer's language when quoting findings back to the user.
 
 ## Related files
 
-- `templates/codex-review-prompt.md` — legacy name; resolved when reviewer is `codex-cli` and no mode-specific template is present (0.1.0 compat)
-- `templates/codex-cli-review-prompt.md` — explicit `codex exec` CLI invocation
-- `templates/codex-mcp-review-prompt.md` — `mcp__codex__codex` MCP tool invocation (<60s only)
-- `templates/codex-auto-review-prompt.md` — default Codex path: MCP-first with CLI fallback
-- `templates/claude-review-prompt.md` — wraps artifacts for Claude as reviewer
-- `templates/gemini-review-prompt.md` — wraps artifacts for Gemini as reviewer
-- `templates/review-report.md` — the schema every reviewer must follow (model-agnostic)
+- `commands/cross-review.md`
+- `commands/review-package.md`
+- `commands/apply-review.md`
+- `templates/review-report.md`

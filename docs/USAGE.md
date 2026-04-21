@@ -2,281 +2,204 @@
 
 Step-by-step walkthrough for `multi-model-review`.
 
-## 0. Prerequisites
+## 1. Prerequisites
 
-- Claude Code installed and authenticated.
-- `git` on `PATH`. Working directory is a git repo.
-- The **reviewer** model installed — whichever one(s) you plan to use:
-  - Codex: either the CLI (`codex --version`) or the Codex MCP server (`mcp__codex__codex` tool available in your session), or both. See [§ Codex — MCP vs CLI vs auto](#codex--mcp-vs-cli-vs-auto) below for when to pick which.
-  - Gemini CLI: `gemini --version` should work.
-  - Claude Code as reviewer: you'll use `claude -p` in a separate terminal.
-  - Any other CLI-capable LLM (Qwen, local Llama, ...) — you'll need a matching template under `templates/`.
-- (Recommended) Spec Kit initialized in the repo, so `specs/<slug>/spec.md` exists.
+- Claude Code installed and authenticated
+- `git` on `PATH`
+- at least one reviewer model installed locally
+- Spec Kit is recommended, but not required
 
-## 1. Install the plugin
+Supported reviewer examples:
 
-See [README.md](../README.md#install). The shortest path — inside any Claude Code session:
+- Codex CLI
+- Codex MCP
+- Gemini CLI
+- another Claude session
 
-```
-/plugin install multi-model-review@multi-model-review
-```
+## 2. Initialize the workflow
 
-Or at your OS shell (equivalent):
+Inside the target repo:
 
-```bash
-claude plugin install multi-model-review@multi-model-review
-claude plugin list          # verify "Status: enabled"
-```
-
-`/reload-plugins` or restart Claude Code. The three commands `/multi-model-review:cross-review`, `/multi-model-review:review-package`, and `/multi-model-review:apply-review` should now appear in the slash-command list.
-
-### Updating, reinstalling, starting over
-
-> `/plugin …` commands go inside a **Claude Code session**. `claude …` and `git …` commands go at your **OS shell** (PowerShell, bash, zsh). Pasting `/plugin …` at a PowerShell prompt returns `'/plugin' is not recognized`.
-
-- **Update** to the latest version — in Claude Code: `/plugin update multi-model-review@multi-model-review`. Or at the shell: `claude plugin update multi-model-review@multi-model-review`.
-- **Uninstall** — in Claude Code: `/plugin uninstall multi-model-review@multi-model-review`.
-- **Dev mode (`claude --plugin-dir`)**: at the shell, `git pull` inside your clone. If `git clone` fails with `destination path already exists`, either delete the existing directory (`rm -rf multi-model-review` / `Remove-Item -Recurse -Force multi-model-review` on PowerShell) or `git pull` in place.
-
-## 2. Initialize a project
-
-In your target repo, from Claude Code:
-
-```
+```text
 /multi-model-review:cross-review init
 ```
 
-Answer the prompts:
+Typical answers:
 
-| Question              | Typical answer                                                                                       |
-|-----------------------|------------------------------------------------------------------------------------------------------|
-| Builder agent         | `claude-code` (you're in Claude right now, so probably this)                                         |
-| Reviewer agent        | `codex-auto` / `codex-cli` / `codex-mcp` / `gemini-cli` / `claude-code` — pick a **different** model |
-| Base ref              | `main` (or whichever branch you diff against)                                                        |
-| Spec-kit feature dir  | e.g. `specs/001-auth-rework/` — glob shows what's available                                          |
+| Prompt | Example |
+|--------|---------|
+| builder | `claude-code` |
+| reviewer | `codex-auto` |
+| base ref | `main` |
+| package profile | `compact` |
+| spec dir | `specs/001-auth-rework` |
 
-A config file is written to `.cross-review/config.json`:
+Example config:
 
 ```json
 {
   "builder": "claude-code",
   "reviewer": "codex-auto",
   "base_ref": "main",
-  "spec_dir": "specs/001-auth-rework"
+  "spec_dir": "specs/001-auth-rework",
+  "package_profile": "compact"
 }
 ```
 
-### Codex — MCP vs CLI vs auto
+## 3. Build the feature
 
-The `mcp__codex__codex` MCP tool has a hard-coded 60-second timeout (`-32001 timed out`). Code review usually does not fit into 60 seconds, so MCP-only setups will fail on most real packages. Pick the mode that matches the review you expect:
+Implement the feature however you normally work:
 
-| Value (`reviewer`) | Execution method                                      | Suitable for              | Failure signal                        |
-|--------------------|-------------------------------------------------------|---------------------------|---------------------------------------|
-| `codex-mcp`        | `mcp__codex__codex` MCP tool (called inline)          | <60s short validations    | `-32001 timed out` (hardcoded at 60s) |
-| `codex-cli`        | `codex exec ... > log.txt 2>&1 &` + `Monitor` tool    | Minutes to tens of minutes | No inherent timeout                  |
-| `codex-auto` (default) | Heuristic: try MCP first; on `-32001 timed out` (or large package) fall back to `codex-cli` | When unsure | — (self-recovers)            |
+- Spec Kit path: `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`
+- ad-hoc path: edit code directly
 
-If in doubt, use `codex-auto`. Pick `codex-cli` when you already know the review is substantial; pick `codex-mcp` only for short validations (e.g. a 10-line diff against a single-section spec).
-
-`.cross-review/` is added to `.gitignore` unless you explicitly opt in to committing it.
-
-> **Tip:** Picking `reviewer = builder` is allowed but the plugin will warn. The whole point is cross-model perspective — use a different model if at all possible.
-
-## 3. Build your change
-
-Nothing plugin-specific here. Implement the feature however you normally would:
-
-- Spec Kit path: `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`.
-- Ad-hoc path: just write code, commit locally.
-
-Commit your work on a feature branch. The reviewer sees the diff against `base_ref`, so commits must be on the branch — uncommitted changes are included in the diff too, but they won't show up in `git log`.
+Commit the branch when possible. The reviewer can inspect uncommitted changes in the diff, but the commit trail is more useful when commits exist.
 
 ## 4. Export the review package
 
-```
+```text
 /multi-model-review:review-package
 ```
 
-Optional arguments:
+Optional variants:
 
-- Positional slug — override which `specs/<slug>/` to use.
-- `--base <ref>` — override the base ref for this run.
-
-What it does:
-
-1. Resolves `<slug>` (from args, or the most recently modified `specs/*/`).
-2. Computes `BASE = git merge-base <base_ref> HEAD`.
-3. Gathers `spec.md`, `plan.md`, `tasks.md`, the diff, the commit log, and every `CLAUDE.md` that applies.
-4. Picks the right reviewer template based on `config.reviewer` — looks up `templates/<reviewer>-review-prompt.md`.
-5. Writes to:
-
+```text
+/multi-model-review:review-package --full
+/multi-model-review:review-package --paths src/auth,src/api
+/multi-model-review:review-package 001-auth-rework --base release/2026-q2
 ```
+
+What the command now does:
+
+1. resolves the feature slug and base ref
+2. profiles the diff
+3. builds a compact package by default
+4. writes:
+
+```text
 .cross-review/packages/<YYYYMMDD-HHMM>-<slug>/
-├── review-package.md     # the reviewer reads this
-└── metadata.json         # base, head, builder, reviewer, timestamp
+  review-package.md
+  metadata.json
 ```
 
-6. Prints the command to run the reviewer. For example:
+The compact package contains summaries, a diff manifest, focused excerpts, and omission notes. It does not dump every raw artifact by default.
+
+## 5. Run the reviewer yourself
+
+Examples:
 
 ```bash
-# reviewer = codex-cli   (long-running; no timeout)
-PKG=.cross-review/packages/20260417-1020-auth-rework
-codex exec --file $PKG/review-package.md > $PKG/log.txt 2>&1 &
-# then attach with the Monitor tool, or:  tail -f $PKG/log.txt
-# when it finishes:
-mv $PKG/log.txt $PKG/review-report.md
+PKG=.cross-review/packages/20260421-1400-auth-rework
 
-# reviewer = codex-mcp   (<60s only — the tool itself hard-codes a -32001 timeout)
-# The skill calls the mcp__codex__codex tool for you; no shell command to run.
-
-# reviewer = codex-auto  (default — skill picks MCP or CLI for you)
-# The skill tries MCP first; on -32001 timed out it prints the codex-cli
-# command above and hands control back to you.
-
-# reviewer = gemini-cli
-gemini --file .cross-review/packages/20260417-1020-auth-rework/review-package.md \
-  > .cross-review/packages/20260417-1020-auth-rework/review-report.md
-
-# reviewer = claude-code
-claude -p "$(cat .cross-review/packages/20260417-1020-auth-rework/review-package.md)" \
-  > .cross-review/packages/20260417-1020-auth-rework/review-report.md
+codex exec --file $PKG/review-package.md > $PKG/review-report.md
+gemini --file $PKG/review-package.md > $PKG/review-report.md
+claude -p "$(cat $PKG/review-package.md)" > $PKG/review-report.md
 ```
 
-### Safety checks
+For `codex-mcp`, the skill may use the MCP path inline for very small packages. Anything longer should move to the CLI path.
 
-The export refuses to run if:
+## 6. Review report structure
 
-- The diff contains likely secrets (`AKIA…`, `-----BEGIN`, `ghp_…`, `sk-…`). Scrub and retry.
-- The package would exceed ~200 KB. Split by path and re-run with a narrower scope.
+The reviewer writes `review-report.md` using [templates/review-report.md](../templates/review-report.md).
 
-## 5. Run the reviewer model
+Important fields:
 
-**You** do this, not the plugin. Open a separate terminal. Use one of the commands printed in step 4, matching your configured reviewer.
+- `Context sufficiency`
+- `Verdict`
+- `Summary`
+- `Findings`
 
-The template inside the package tells the reviewer to produce output in the schema defined in [templates/review-report.md](../templates/review-report.md). Every supported reviewer template points at the same schema, so the downstream parsing in `/multi-model-review:apply-review` is model-agnostic.
+`Context sufficiency` is the compact-first escape hatch:
 
-### Multi-reviewer triangulation
+- `sufficient`: proceed normally
+- `limited-but-actionable`: proceed, but note the scope warning
+- `needs-full-package`: rerun packaging with more context
 
-You can send the same package to more than one reviewer to get independent signals. Use the Codex **CLI** form here — the MCP tool's 60s ceiling makes it unreliable for anything past the smallest diffs:
+## 7. Ingest the report
 
-```bash
-codex  exec --file <pkg>/review-package.md > <pkg>/review-report-codex.md
-gemini --file <pkg>/review-package.md      > <pkg>/review-report-gemini.md
-claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report-claude.md
-```
-
-Findings that appear in 2+ reports are almost certainly real. Findings unique to one reviewer are where cross-model value lives — but treat them with healthy skepticism.
-
-To ingest one of them, rename it to `review-report.md` before running `/multi-model-review:apply-review` (a built-in multi-report merge is on the roadmap).
-
-## 6. Ingest the review
-
-Back in your Claude Code session in the project:
-
-```
+```text
 /multi-model-review:apply-review
 ```
 
-Optional arguments:
+Optional:
 
-- Positional path to a package dir — otherwise the latest one with a `review-report.md` is used.
-- `--min-confidence N` — default 70. Use `--min-confidence 0` to see every finding.
+```text
+/multi-model-review:apply-review --min-confidence 85
+/multi-model-review:apply-review .cross-review/packages/20260421-1400-auth-rework
+```
 
-What happens:
+Default behavior:
 
-1. The report is parsed. Each finding has `severity`, `confidence`, `location`, `summary`, `detail`, `suggested_fix`.
-2. Low-confidence findings are dropped.
-3. Remaining findings are presented as a numbered checklist.
-4. For each finding you accept, Claude reads the target file, proposes an `Edit`, and applies it after confirmation.
-5. State is tracked in `.cross-review/packages/<pkg>/review-state.json`, so re-runs know which findings were already applied.
+1. parse the report
+2. stop early if the report says `needs-full-package`
+3. drop findings with confidence below 70
+4. present a checklist
+5. apply accepted findings one at a time
 
-### Guardrails during ingest
+## 8. When to rerun with `--full`
 
-- `severity: critical` is never auto-applied in batch mode — always explicit confirm.
-- Two findings on the same line are applied sequentially with a re-read between.
-- The builder model quotes the reviewer's wording instead of paraphrasing. Different models calibrate differently — keeping the reviewer's language preserves that signal.
+Use `--full` when:
 
-## 7. Iterate
+- the reviewer explicitly asks for it
+- the diff is too cross-cutting for focused excerpts
+- rule interpretation depends on large omitted appendices
+- the review is security-sensitive and you want maximum raw context
 
-After applying fixes, commit and run `/multi-model-review:review-package` again. Each run creates a new timestamped package, so you keep an audit trail of review rounds. Consider rotating reviewers between rounds — e.g. round 1 reviewed by Codex, round 2 reviewed by Gemini — to surface different classes of issues.
+Do not default to `--full` for every review. The compact package is the normal path.
 
-## Swapping roles
+## 9. When to use `--paths`
 
-To flip to e.g. "Codex builds, Claude reviews":
+Use `--paths` when the full branch is too large but the issue is local:
 
-1. Edit `.cross-review/config.json` — swap `builder` and `reviewer`.
-2. Next `/multi-model-review:review-package` will use [templates/claude-review-prompt.md](../templates/claude-review-prompt.md) instead of the Codex one.
-3. Build your change with Codex (outside this Claude session).
-4. In Codex, ensure the feature branch is committed.
-5. Come back to Claude and run `/multi-model-review:review-package` — Claude is now the reviewer, and you run it via `claude -p ...`.
+- `src/auth`
+- `src/payments`
+- `db/migrations`
 
-Or just re-run `/multi-model-review:cross-review init` to reset interactively.
+This often gives better signal than switching blindly to a huge `--full` package.
 
-## Adding a new reviewer model
+## 10. RTK-inspired behavior
 
-Say you want Qwen CLI as a reviewer:
+The package strategy borrows the same ideas that RTK applies to shell output:
 
-1. Copy an existing template:
-   ```bash
-   cp templates/claude-review-prompt.md templates/qwen-review-prompt.md
-   ```
-2. Edit the top of `qwen-review-prompt.md` — change the reviewer name in the header. The body (instructions, schema, confidence scoring) is model-agnostic and can stay identical.
-3. Set `reviewer: "qwen-cli"` in `.cross-review/config.json`.
-4. Add your Qwen CLI invocation to the printout logic (for a personal setup, just memorize it — for a PR back to this repo, update the README table).
+- filter noise
+- group related items
+- truncate repetitive output
+- deduplicate repeated structure
 
-That's it. No code change, no plugin rebuild.
+See [TOKEN_EFFICIENCY.md](TOKEN_EFFICIENCY.md) for the detailed mapping.
 
-## Troubleshooting
+## 11. Troubleshooting
 
-### "No `specs/<slug>/` directory found"
+### No `specs/<slug>` directory found
 
-You're in ad-hoc mode. `/multi-model-review:review-package` will still run, but the reviewer only sees the diff and `CLAUDE.md`, not a spec. Either initialize Spec Kit or write a one-page `specs/<slug>/spec.md` by hand.
+The command falls back to ad-hoc diff-only mode.
 
-### "Package would contain likely secrets"
+### Reviewer says `needs-full-package`
 
-Grep your diff for the patterns in the error message and remove them (rotate keys first if committed).
+Rerun:
 
-### "review-report.md not found"
+```text
+/multi-model-review:review-package --full
+```
 
-`/multi-model-review:apply-review` looks under `.cross-review/packages/`. Make sure the reviewer actually wrote its output there — if it wrote to stdout, redirect: `> .cross-review/packages/<pkg>/review-report.md`.
+Or narrow the package:
 
-### Report doesn't parse
+```text
+/multi-model-review:review-package --paths <subset>
+```
 
-The reviewer deviated from the schema in [templates/review-report.md](../templates/review-report.md). Options:
-- Hand-edit the report to match.
-- Re-run the reviewer with a stricter reminder (the template already instructs the exact format).
-- Some models (especially chat-tuned) add a preamble — strip it.
+### Codex MCP times out
 
-### Findings feel too noisy
+Use `codex-auto` or `codex-cli`. MCP is only for very small packages.
 
-Raise the confidence floor: `/multi-model-review:apply-review --min-confidence 85`.
+### Findings feel noisy
 
-### Findings feel too sparse
+Raise the confidence floor:
 
-Lower the floor: `/multi-model-review:apply-review --min-confidence 50`. Or run the package through a *different* reviewer model — different LLMs have very different sensitivities.
+```text
+/multi-model-review:apply-review --min-confidence 85
+```
 
-### "Template `templates/<reviewer>-review-prompt.md` not found"
+### Findings feel sparse
 
-Your configured reviewer doesn't have a template. Copy an existing one (see "Adding a new reviewer model" above) or change `reviewer` in config.
-
-### Codex returns `-32001 timed out`
-
-The `mcp__codex__codex` MCP tool hard-codes a 60-second timeout. Any non-trivial review will hit it. Options:
-
-- Set `reviewer = codex-auto` (default) so the skill falls back to CLI for you on timeout.
-- Set `reviewer = codex-cli` and run the CLI invocation yourself (`codex exec ... > log.txt 2>&1 &` plus `Monitor`). No inherent timeout — suitable for minutes- to tens-of-minutes-long reviews.
-- Only keep `reviewer = codex-mcp` for tiny validations where you expect well under 60 seconds (single-file diff, checklist check, etc.).
-
-## FAQ
-
-**Does this call Codex / Gemini / OpenAI / Google from inside Claude?**  Mostly no — with one narrow exception. For `reviewer = codex-mcp` or `codex-auto`, the skill may call the `mcp__codex__codex` MCP tool on your behalf, but only for short (<60s) runs. Everything else — `codex-cli`, `claude`, `gemini` — you run yourself. The plugin reads and writes files on disk; it does not call the Codex/Gemini/OpenAI/Google HTTP APIs.
-
-**Can I use it without Spec Kit?**  Yes — ad-hoc mode. Less context for the reviewer, but still useful.
-
-**Can the builder and reviewer be the same model?**  Technically yes, but you lose the cross-model perspective that motivates this plugin. The skill will warn if you configure it this way.
-
-**Can I use more than one reviewer in the same round?**  Yes, manually — see "Multi-reviewer triangulation" above. A merged-report feature is on the roadmap.
-
-**Will this overwrite my code?**  Only through `/multi-model-review:apply-review`, and only after you confirm each edit (critical-severity findings always require explicit confirm).
-
-**Where do I report bugs?**  [github.com/formin/multi-model-review/issues](https://github.com/formin/multi-model-review/issues).
+Lower the floor or ask for a fuller package.
