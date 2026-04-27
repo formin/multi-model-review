@@ -33,20 +33,43 @@ Spec Kit is excellent at the single-agent flow:
 
 | Stage | Default | Notes |
 |-------|---------|-------|
-| Spec authoring | `codex-5.5` | Use `intelligence=very-high, speed=normal` |
-| Spec authoring alternative | `opus-4.7` | Use `context=1M, workload=high` |
-| Implementation | `claude-sonnet-4.6` | Use `workload=high` for token-heavy development work |
-| Review | `codex-auto` | Compact package first, CLI fallback for larger reviews |
+| Spec authoring | `codex-5.5:xhigh@normal` | Deep reasoning, normal speed |
+| Heavy spec authoring | `opus-4.7:1m@max` | Large audits and 1M-context passes |
+| Implementation | `sonnet-4.6@high` | Token-heavy development work, no silent upgrade |
+| Review | `codex-5.5:high@normal` | Cost-aware cross-review |
 
-The routing is stored in `.cross-review/config.json`, so the skill can keep the spec-writing model, model-specific options, and the implementation model distinct throughout packaging and review.
+The routing is stored in `.cross-review/config.json`, so the skill can keep the spec-writing model, heavy-spec model, implementation model, and review model distinct throughout packaging and review.
+
+Detailed model specs use:
+
+```text
+<model>[:<axis-a>][@<axis-b>]
+```
+
+Examples:
+
+- `codex-5.5:xhigh@normal`
+- `codex-5.5:high@priority`
+- `opus-4.7:1m@max`
+- `sonnet-4.6@high`
 
 Example spec author options:
 
 ```json
 {
+  "model_defaults": {
+    "spec": {
+      "raw": "codex-5.5:xhigh@normal",
+      "provider": "codex",
+      "model": "codex-5.5",
+      "reasoning": "xhigh",
+      "speed": "normal"
+    }
+  },
   "spec_author_model": "codex-5.5",
   "spec_author_options": {
     "intelligence": "very-high",
+    "reasoning": "xhigh",
     "speed": "normal"
   }
 }
@@ -54,10 +77,19 @@ Example spec author options:
 
 ```json
 {
-  "spec_author_model": "opus-4.7",
-  "spec_author_options": {
+  "model_defaults": {
+    "spec_heavy": {
+      "raw": "opus-4.7:1m@max",
+      "provider": "claude",
+      "model": "claude-opus-4.7",
+      "context": "1M",
+      "workload": "max"
+    }
+  },
+  "spec_heavy_model": "claude-opus-4.7",
+  "spec_heavy_options": {
     "context": "1M",
-    "workload": "high"
+    "workload": "max"
   }
 }
 ```
@@ -67,11 +99,12 @@ UI option mapping:
 | UI | Config key | Values |
 |----|------------|--------|
 | Codex model | `spec_author_model` | `codex-5.5` or `gpt-5.5` for the GPT-5.5 UI entry |
+| Codex reasoning | `reasoning` | `low`, `medium`, `high`, `xhigh` |
 | Codex intelligence | `intelligence` | `low`, `medium`, `high`, `very-high` |
-| Codex speed | `speed` | `normal`, `fast` |
+| Codex speed | `speed` | `normal`, `fast`, `priority` |
 | Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
 | Claude context | `context` | `standard`, `1M` |
-| Claude workload | `workload` | `low`, `normal`, `high` |
+| Claude workload | `workload` | `low`, `normal`, `high`, `max` |
 
 ## Compact-first packaging
 
@@ -104,7 +137,7 @@ Details live in [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md).
 |----------|----------|-----------------|
 | Claude | `templates/claude-review-prompt.md` | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md` |
 | Codex (auto) | `templates/codex-auto-review-prompt.md` | Try MCP first, fall back to CLI on timeout |
-| Codex (CLI) | `templates/codex-cli-review-prompt.md` | `codex exec --file <pkg>/review-package.md > <pkg>/review-report.md` |
+| Codex (CLI) | `templates/codex-cli-review-prompt.md` | `codex exec -m codex-5.5 --file <pkg>/review-package.md > <pkg>/review-report.md` |
 | Codex (MCP) | `templates/codex-mcp-review-prompt.md` | Inline MCP call for tiny packages |
 | Gemini | `templates/gemini-review-prompt.md` | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md` |
 
@@ -117,7 +150,7 @@ The `mcp__codex__codex` path is hard-limited to about 60 seconds, so non-trivial
 | Value | Execution method | Best for |
 |-------|------------------|----------|
 | `codex-mcp` | inline MCP | tiny validations |
-| `codex-cli` | `codex exec --file ...` | longer reviews |
+| `codex-cli` | `codex exec -m <review_model> --file ...` | longer reviews |
 | `codex-auto` | MCP first, CLI fallback | default |
 
 ## Requirements
@@ -153,32 +186,38 @@ Then run `/reload-plugins` or restart Claude Code.
 Inside your project:
 
 ```text
-/multi-model-review:cross-review init
+/multi-model-review:cross-review init \
+  --spec codex-5.5:xhigh@normal \
+  --spec-heavy opus-4.7:1m@max \
+  --dev sonnet-4.6@high \
+  --review codex-5.5:high@normal
 ```
 
-Typical answers:
+This writes `.cross-review/config.json`. The same settings can be changed later with:
 
-- `builder = claude-code`
-- `spec_author_model = codex-5.5`
-- `spec_author_options = {"intelligence":"very-high","speed":"normal"}`
-- `spec_author_profile = intelligence=very-high, speed=normal`
-- `implementation_model = claude-sonnet-4.6`
-- `implementation_options = {"workload":"high"}`
-- `reviewer = codex-auto`
-- `base ref = main`
-- `package profile = compact`
+```text
+/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal
+```
 
 Create a spec-authoring handoff when you want the configured spec model to write or refine the development artifacts:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework
+/multi-model-review:spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
+```
+
+For a plan-focused pass, keep the same command and add `--plan`:
+
+```text
+/multi-model-review:spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
 ```
 
 Then implement your feature as usual and package it:
 
 ```text
-/multi-model-review:review-package
+/multi-model-review:review-package --review-model codex-5.5:high@normal
 ```
+
+Implementation still happens through your normal builder flow, such as `/speckit.implement` or direct edits. `multi-model-review` records the configured dev model and refuses silent upgrade in the handoff metadata; it does not add a separate implement slash command.
 
 The plugin writes:
 
@@ -192,7 +231,7 @@ Run the reviewer in a separate terminal. Example:
 
 ```bash
 PKG=.cross-review/packages/20260421-1400-auth-rework
-codex exec --file $PKG/review-package.md > $PKG/review-report.md
+codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
 ```
 
 Then ingest the report:
@@ -213,6 +252,56 @@ Or scope it tighter:
 /multi-model-review:review-package --paths src/auth,src/api
 ```
 
+### Detailed option examples
+
+Set project defaults with both model axes:
+
+```text
+/multi-model-review:cross-review init \
+  --spec codex-5.5:xhigh@normal \
+  --spec-heavy opus-4.7:1m@max \
+  --dev sonnet-4.6@high \
+  --review codex-5.5:high@normal
+```
+
+Write a spec from the user's feature brief with high intelligence and normal speed:
+
+```text
+/multi-model-review:spec-handoff "CSP v2 offerId alignment" --spec-model codex-5.5:xhigh@normal
+```
+
+Use the heavy 1M-context spec default for a large audit:
+
+```text
+/multi-model-review:spec-handoff "DOMAINAPI full SERVER_ADDR branch audit" --heavy
+```
+
+Create a plan-focused handoff while preserving the configured implementation model:
+
+```text
+/multi-model-review:spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
+```
+
+Implementation still runs through your normal builder flow, such as `/speckit.implement` or direct edits. The configured default is `sonnet-4.6@high`, and generated metadata records `allow_silent_upgrade=false` so the workflow does not quietly move implementation to a stronger model.
+
+Run cost-aware cross-review:
+
+```text
+/multi-model-review:review-package C-12 --review-model codex-5.5:high@normal
+```
+
+Escalate intelligence for a non-trivial design review:
+
+```text
+/multi-model-review:review-package L-30 --review-model codex-5.5:xhigh@normal
+```
+
+Use priority speed only when review turnaround is the bottleneck:
+
+```text
+/multi-model-review:review-package L-50 --review-model codex-5.5:high@priority
+```
+
 ## Basic usage examples
 
 ### Codex 5.5 writes specs, Claude Sonnet 4.6 implements
@@ -222,14 +311,52 @@ Use this when you want Codex to spend the deep reasoning budget on durable Spec 
 ```json
 {
   "builder": "claude-code",
+  "model_defaults": {
+    "spec": {
+      "raw": "codex-5.5:xhigh@normal",
+      "provider": "codex",
+      "model": "codex-5.5",
+      "reasoning": "xhigh",
+      "speed": "normal"
+    },
+    "spec_heavy": {
+      "raw": "opus-4.7:1m@max",
+      "provider": "claude",
+      "model": "claude-opus-4.7",
+      "context": "1M",
+      "workload": "max"
+    },
+    "dev": {
+      "raw": "sonnet-4.6@high",
+      "provider": "claude",
+      "model": "claude-sonnet-4.6",
+      "workload": "high",
+      "allow_silent_upgrade": false
+    },
+    "review": {
+      "raw": "codex-5.5:high@normal",
+      "provider": "codex",
+      "model": "codex-5.5",
+      "reasoning": "high",
+      "speed": "normal"
+    }
+  },
   "spec_author_model": "codex-5.5",
   "spec_author_options": {
     "intelligence": "very-high",
+    "reasoning": "xhigh",
     "speed": "normal"
   },
   "implementation_model": "claude-sonnet-4.6",
   "implementation_options": {
-    "workload": "high"
+    "workload": "high",
+    "allow_silent_upgrade": false
+  },
+  "review_model": "codex-5.5",
+  "review_options": {
+    "intelligence": "high",
+    "reasoning": "high",
+    "speed": "normal"
   },
   "reviewer": "codex-auto",
   "base_ref": "main",
@@ -240,17 +367,17 @@ Use this when you want Codex to spend the deep reasoning budget on durable Spec 
 Then run:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework
-/multi-model-review:review-package 001-auth-rework
+/multi-model-review:spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
+/multi-model-review:review-package 001-auth-rework --review-model codex-5.5:high@normal
 /multi-model-review:apply-review
 ```
 
 ### Opus 4.7 1M writes specs, Claude Sonnet 4.6 implements
 
-Use this when the spec pass needs the Claude 1M context option and high workload setting.
+Use this when the spec pass needs the Claude 1M context option and max workload setting.
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --model claude-opus-4.7-1m --model-option context=1M --model-option workload=high --implementation-model claude-sonnet-4.6 --implementation-option workload=high
+/multi-model-review:spec-handoff 001-auth-rework --heavy
 ```
 
 Equivalent config:
@@ -258,14 +385,31 @@ Equivalent config:
 ```json
 {
   "builder": "claude-code",
-  "spec_author_model": "claude-opus-4.7-1m",
-  "spec_author_options": {
+  "model_defaults": {
+    "spec_heavy": {
+      "raw": "opus-4.7:1m@max",
+      "provider": "claude",
+      "model": "claude-opus-4.7",
+      "context": "1M",
+      "workload": "max"
+    },
+    "dev": {
+      "raw": "sonnet-4.6@high",
+      "provider": "claude",
+      "model": "claude-sonnet-4.6",
+      "workload": "high",
+      "allow_silent_upgrade": false
+    }
+  },
+  "spec_heavy_model": "claude-opus-4.7",
+  "spec_heavy_options": {
     "context": "1M",
-    "workload": "high"
+    "workload": "max"
   },
   "implementation_model": "claude-sonnet-4.6",
   "implementation_options": {
-    "workload": "high"
+    "workload": "high",
+    "allow_silent_upgrade": false
   },
   "reviewer": "codex-auto",
   "base_ref": "main",
@@ -277,9 +421,9 @@ Equivalent config:
 
 | Command | Purpose |
 |---------|---------|
-| `/multi-model-review:cross-review [init|status]` | configure model routing, roles, and defaults |
-| `/multi-model-review:spec-handoff [slug|brief] [--model <id>] [--model-option <key=value>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec authoring handoff |
-| `/multi-model-review:review-package [slug] [--base <ref>] [--full] [--paths <glob,...>]` | export the reviewer handoff |
+| `/multi-model-review:cross-review [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>]` | configure model routing, roles, and defaults |
+| `/multi-model-review:spec-handoff [slug|brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec or plan handoff |
+| `/multi-model-review:review-package [slug|task-id] [--review-model <model[:axis]@axis>] [--base <ref>] [--full] [--micro] [--paths <glob,...>]` | export the reviewer handoff |
 | `/multi-model-review:apply-review [path] [--min-confidence N]` | ingest the report and apply fixes |
 
 ## Review report contract

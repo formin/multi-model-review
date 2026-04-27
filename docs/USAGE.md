@@ -13,20 +13,28 @@ Recommended model routing:
 
 | Stage | Model |
 |-------|-------|
-| development spec author | `codex-5.5` with `intelligence=very-high, speed=normal` |
-| spec author alternative | `opus-4.7` with `context=1M, workload=high` |
-| actual development implementation | `claude-sonnet-4.6` with `workload=high` |
+| development spec author | `codex-5.5:xhigh@normal` |
+| heavy spec author | `opus-4.7:1m@max` |
+| actual development implementation | `sonnet-4.6@high` |
+| review | `codex-5.5:high@normal` |
+
+Detailed model specs use:
+
+```text
+<model>[:<axis-a>][@<axis-b>]
+```
 
 UI option mapping:
 
 | UI | Config key | Values |
 |----|------------|--------|
 | Codex model | `spec_author_model` | `codex-5.5` or `gpt-5.5` for the GPT-5.5 UI entry |
+| Codex reasoning | `reasoning` | `low`, `medium`, `high`, `xhigh` |
 | Codex intelligence | `intelligence` | `low`, `medium`, `high`, `very-high` |
-| Codex speed | `speed` | `normal`, `fast` |
+| Codex speed | `speed` | `normal`, `fast`, `priority` |
 | Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
 | Claude context | `context` | `standard`, `1M` |
-| Claude workload | `workload` | `low`, `normal`, `high` |
+| Claude workload | `workload` | `low`, `normal`, `high`, `max` |
 
 Supported reviewer examples:
 
@@ -40,18 +48,28 @@ Supported reviewer examples:
 Inside the target repo:
 
 ```text
-/multi-model-review:cross-review init
+/multi-model-review:cross-review init \
+  --spec codex-5.5:xhigh@normal \
+  --spec-heavy opus-4.7:1m@max \
+  --dev sonnet-4.6@high \
+  --review codex-5.5:high@normal
 ```
 
-Typical answers:
+Equivalent update form:
+
+```text
+/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal
+```
+
+Typical stored values:
 
 | Prompt | Example |
 |--------|---------|
 | builder | `claude-code` |
-| spec author model | `codex-5.5` |
-| spec author options | `{"intelligence":"very-high","speed":"normal"}` |
-| implementation model | `claude-sonnet-4.6` |
-| implementation options | `{"workload":"high"}` |
+| spec default | `codex-5.5:xhigh@normal` |
+| heavy spec default | `opus-4.7:1m@max` |
+| implementation default | `sonnet-4.6@high` |
+| review default | `codex-5.5:high@normal` |
 | reviewer | `codex-auto` |
 | base ref | `main` |
 | package profile | `compact` |
@@ -62,14 +80,52 @@ Example config:
 ```json
 {
   "builder": "claude-code",
+  "model_defaults": {
+    "spec": {
+      "raw": "codex-5.5:xhigh@normal",
+      "provider": "codex",
+      "model": "codex-5.5",
+      "reasoning": "xhigh",
+      "speed": "normal"
+    },
+    "spec_heavy": {
+      "raw": "opus-4.7:1m@max",
+      "provider": "claude",
+      "model": "claude-opus-4.7",
+      "context": "1M",
+      "workload": "max"
+    },
+    "dev": {
+      "raw": "sonnet-4.6@high",
+      "provider": "claude",
+      "model": "claude-sonnet-4.6",
+      "workload": "high",
+      "allow_silent_upgrade": false
+    },
+    "review": {
+      "raw": "codex-5.5:high@normal",
+      "provider": "codex",
+      "model": "codex-5.5",
+      "reasoning": "high",
+      "speed": "normal"
+    }
+  },
   "spec_author_model": "codex-5.5",
   "spec_author_options": {
     "intelligence": "very-high",
+    "reasoning": "xhigh",
     "speed": "normal"
   },
   "implementation_model": "claude-sonnet-4.6",
   "implementation_options": {
-    "workload": "high"
+    "workload": "high",
+    "allow_silent_upgrade": false
+  },
+  "review_model": "codex-5.5",
+  "review_options": {
+    "intelligence": "high",
+    "reasoning": "high",
+    "speed": "normal"
   },
   "reviewer": "codex-auto",
   "base_ref": "main",
@@ -89,13 +145,14 @@ When you want a stronger or longer-context model to write or refine the Spec Kit
 Override model routing for a single handoff when needed:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --model opus-4.7
-/multi-model-review:spec-handoff 001-auth-rework --model codex-5.5 --model-option intelligence=very-high --model-option speed=normal
-/multi-model-review:spec-handoff 001-auth-rework --model opus-4.7 --model-option context=1M --model-option workload=high
-/multi-model-review:spec-handoff "Add magic-link auth" --implementation-model claude-sonnet-4.6 --implementation-option workload=high
+/multi-model-review:spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
+/multi-model-review:spec-handoff 001-auth-rework --spec-model opus-4.7:1m@max
+/multi-model-review:spec-handoff 001-auth-rework --heavy
+/multi-model-review:spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
+/multi-model-review:spec-handoff "Add magic-link auth" --dev-model sonnet-4.6@high
 ```
 
-`spec_author_options` is the source of truth. `spec_author_profile` may still appear in generated prompts as a readable summary, for example `intelligence=very-high, speed=normal`.
+`model_defaults` is the structured source of truth. Legacy `spec_author_options` and `spec_author_profile` still appear in generated prompts, for example `intelligence=very-high, reasoning=xhigh, speed=normal`.
 
 The command writes:
 
@@ -114,7 +171,9 @@ Implement the feature however you normally work:
 - Spec Kit path: `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`
 - ad-hoc path: edit code directly
 
-Use the configured `implementation_model` and `implementation_options` for the token-heavy implementation pass. The default is `claude-sonnet-4.6` with `workload=high`.
+Use the configured `implementation_model` and `implementation_options` for the token-heavy implementation pass. The default is `sonnet-4.6@high`, stored as `claude-sonnet-4.6` with `workload=high`.
+
+The default implementation routing disables silent upgrade. If the configured dev model is `sonnet-4.6@high`, do not silently switch to Opus or a higher workload just because the task looks hard.
 
 Commit the branch when possible. The reviewer can inspect uncommitted changes in the diff, but the commit trail is more useful when commits exist.
 
@@ -130,14 +189,18 @@ Optional variants:
 /multi-model-review:review-package --full
 /multi-model-review:review-package --paths src/auth,src/api
 /multi-model-review:review-package 001-auth-rework --base release/2026-q2
+/multi-model-review:review-package C-12 --review-model codex-5.5:high@normal
+/multi-model-review:review-package L-30 --review-model codex-5.5:xhigh@normal
+/multi-model-review:review-package L-50 --review-model codex-5.5:high@priority
 ```
 
 What the command now does:
 
 1. resolves the feature slug and base ref
-2. profiles the diff
-3. builds a compact package by default
-4. writes:
+2. resolves the review model, including any `--review-model` override
+3. profiles the diff
+4. builds a compact package by default
+5. writes:
 
 ```text
 .cross-review/packages/<YYYYMMDD-HHMM>-<slug>/
@@ -154,7 +217,7 @@ Examples:
 ```bash
 PKG=.cross-review/packages/20260421-1400-auth-rework
 
-codex exec --file $PKG/review-package.md > $PKG/review-report.md
+codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
 gemini --file $PKG/review-package.md > $PKG/review-report.md
 claude -p "$(cat $PKG/review-package.md)" > $PKG/review-report.md
 ```

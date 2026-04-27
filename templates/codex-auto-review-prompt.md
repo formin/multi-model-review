@@ -7,7 +7,7 @@ This file is self-contained. Do not rely on prior conversation state.
 > Invocation mode: `codex-auto`
 >
 > - Small package: you may be called through MCP, so work quickly.
-> - Large package: you may be run through `codex exec --file`, so you can review more thoroughly.
+> - Large package: you may be run through `codex exec -m <review_model> --file`, so you can review more thoroughly.
 > - If context is insufficient, say so using `Context sufficiency` instead of guessing.
 
 ## 1. Package profile
@@ -19,6 +19,9 @@ This file is self-contained. Do not rely on prior conversation state.
 - spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
 - implementation model: `{{IMPLEMENTATION_MODEL}}`
 - implementation options: `{{IMPLEMENTATION_OPTIONS}}`
+- review model: `{{REVIEW_MODEL}}`
+- review options: `{{REVIEW_OPTIONS}}`
+- review profile: `{{REVIEW_PROFILE}}`
 - changed files: `{{CHANGED_FILE_COUNT}}`
 - changed lines: `{{CHANGED_LINE_COUNT}}`
 

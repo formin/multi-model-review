@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting a model for development spec authoring, selecting a model for actual implementation, exporting a cross-model code review package, or invoking /multi-model-review:cross-review, /multi-model-review:spec-handoff, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill creates portable markdown handoffs between spec-author, implementation, and reviewer models.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, and review, exporting a cross-model code review package, or invoking /multi-model-review:cross-review, /multi-model-review:spec-handoff, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill creates portable markdown handoffs between spec-author, implementation, and reviewer models.
 license: MIT
 ---
 
@@ -17,6 +17,7 @@ Activate when the user:
 - asks to choose or record the model used for actual implementation
 - wants a second opinion from Codex, Gemini, Claude, or another CLI model
 - mentions Spec Kit artifacts in a review context
+- gives detailed model specs such as `codex-5.5:xhigh@normal`, `opus-4.7:1m@max`, `sonnet-4.6@high`, or `codex-5.5:high@priority`
 - invokes `/multi-model-review:cross-review`, `/multi-model-review:spec-handoff`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`
 
 ## Mental model
@@ -73,34 +74,71 @@ The skill owns three directions:
 Recommended `config.json` keys:
 
 - `builder`
+- `model_defaults`
 - `spec_author_model`
 - `spec_author_options`
 - `spec_author_profile`
+- `spec_heavy_model`
+- `spec_heavy_options`
+- `spec_heavy_profile`
 - `implementation_model`
 - `implementation_options`
+- `review_model`
+- `review_options`
+- `review_profile`
 - `reviewer`
 - `base_ref`
 - `spec_dir`
 - `package_profile`
 
+## Detailed model specs
+
+The existing `/multi-model-review:*` command surface is the only directive surface. Do not introduce another alias.
+
+Accept detailed model specs in this grammar:
+
+```text
+<model>[:<axis-a>][@<axis-b>]
+```
+
+Examples:
+
+- `codex-5.5:xhigh@normal`
+- `codex-5.5:high@priority`
+- `opus-4.7:1m@max`
+- `sonnet-4.6@high`
+
+Provider mappings:
+
+- Codex:
+  - model examples: `codex-5.5`, `gpt-5.5`
+  - axis A: `low`, `medium`, `high`, `xhigh`, `very-high`
+  - axis B: `normal`, `fast`, `priority`
+- Claude:
+  - model examples: `opus-4.7`, `sonnet-4.6`, `haiku-4.5`, `claude-*`
+  - axis A: `standard`, `1m`, `1M` context when present
+  - axis B: `low`, `normal`, `high`, `max` workload
+- Gemini or custom:
+  - preserve provider-specific axes without inventing mappings
+
+Parsing rules:
+
+- Preserve the original string as `raw`.
+- Normalize `xhigh` to legacy display `intelligence=very-high`, but keep `reasoning=xhigh` in `model_defaults`.
+- Normalize `1m` to `1M`.
+- Normalize `sonnet-4.6` to `claude-sonnet-4.6`.
+- Do not silently upgrade or downgrade any axis.
+- Do not replace the selected implementation model with a stronger model unless the user explicitly requests it.
+
 Model routing defaults:
 
-- `spec_author_model`: prefer `codex-5.5`.
-- `spec_author_options`: store model-specific options as structured JSON.
-- `spec_author_profile`: optional legacy/display summary derived from `spec_author_options`.
-- For Codex `codex-5.5` or `gpt-5.5`, default `spec_author_options = { "intelligence": "very-high", "speed": "normal" }`.
-- Codex option values:
-  - `intelligence`: `low`, `medium`, `high`, `very-high`
-  - `speed`: `normal`, `fast`
-- For Claude `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m`, default `spec_author_options = { "context": "1M", "workload": "high" }`.
-- Claude option values:
-  - `context`: `standard`, `1M`
-  - `workload`: `low`, `normal`, `high`
-- Treat legacy `work = max` as `workload = high` when mapping to the Claude UI shown to the user.
-- `implementation_model`: default to `claude-sonnet-4.6` because implementation usually consumes the largest token budget.
-- `implementation_options`: default to `{ "workload": "high" }` for Claude implementation models.
+- `model_defaults.spec`: `codex-5.5:xhigh@normal`.
+- `model_defaults.spec_heavy`: `opus-4.7:1m@max`.
+- `model_defaults.dev`: `sonnet-4.6@high` with `allow_silent_upgrade=false`.
+- `model_defaults.review`: `codex-5.5:high@normal`.
+- Keep legacy fields updated from `model_defaults` for older commands and templates.
 - Keep `builder` as the execution surface, such as `claude-code`, and keep `implementation_model` as the actual model descriptor.
-- Keep `reviewer` separate from both spec author and implementation model.
+- Keep `reviewer` separate from both implementation model and `review_model`.
 
 ## Spec handoff flow
 
@@ -108,14 +146,18 @@ Use `/multi-model-review:spec-handoff` before implementation when the user wants
 
 ### 1. Resolve model routing
 
-- Read `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, and `implementation_options` from `.cross-review/config.json`.
-- If `spec_author_options` is missing, infer it from the selected model:
-  - `codex-5.5` or `gpt-5.5` -> `{ "intelligence": "very-high", "speed": "normal" }`
-  - `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m` -> `{ "context": "1M", "workload": "high" }`
+- Read `model_defaults`, `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, and `implementation_options` from `.cross-review/config.json`.
+- If the user passes `--spec-model <model[:axis]@axis>`, use it for this handoff only.
+- If the user passes `--heavy`, use `model_defaults.spec_heavy`.
+- If the user passes `--plan`, keep using `/multi-model-review:spec-handoff` but emphasize `plan.md` and `tasks.md` output for implementation handoff planning.
+- If both `--spec-model` and `--heavy` are present, the explicit `--spec-model` wins and you should say so.
+- If `model_defaults` is missing, infer it from legacy fields:
+  - `codex-5.5` or `gpt-5.5` -> `{ "intelligence": "very-high", "reasoning": "xhigh", "speed": "normal" }`
+  - `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m` -> `{ "context": "1M", "workload": "max" }`
 - If only legacy `spec_author_profile` is present, preserve it and add a package note that options were inferred from the display profile when possible.
-- If `implementation_options` is missing for a Claude implementation model, infer `{ "workload": "high" }`.
-- If the user asks for Opus, use `opus-4.7` with 1M context / high workload unless the user gives different model options.
-- Derive `spec_author_profile` from `spec_author_options` for human-readable output, for example `intelligence=very-high, speed=normal`.
+- If `implementation_options` is missing for a Claude implementation model, infer `{ "workload": "high", "allow_silent_upgrade": false }`.
+- If the user asks for Opus heavy mode, use `opus-4.7:1m@max` unless the user gives different model options.
+- Derive `spec_author_profile` from `spec_author_options` for human-readable output, for example `intelligence=very-high, reasoning=xhigh, speed=normal`.
 
 ### 2. Gather spec inputs
 
@@ -141,7 +183,7 @@ The template must tell the spec author model to:
 Write:
 
 - `spec-authoring-prompt.md`
-- `metadata.json` with spec author model, spec author options, spec author profile, implementation model, timestamp, slug, and source notes
+- `metadata.json` with the selected detailed spec model, spec author model/options/profile, selected detailed implementation model, implementation options, timestamp, slug, original arguments, and source notes
 
 Print the selected spec author model, implementation model, prompt path, and expected `spec-output.md` path.
 
@@ -159,6 +201,7 @@ Build a self-contained markdown package. Default to **compact-first** packaging.
 
 - Base ref: config value or `main`
 - Optional path filter from `--paths`
+- Optional `--review-model <model[:axis]@axis>` override for a single review package
 - Reviewer mode:
   - `codex-mcp` implies `micro`
   - `codex-auto`, `codex-cli`, `claude-code`, `gemini-cli` should default to `compact`
@@ -189,6 +232,9 @@ Create these placeholders:
 - `SPEC_AUTHOR_PROFILE`
 - `IMPLEMENTATION_MODEL`
 - `IMPLEMENTATION_OPTIONS`
+- `REVIEW_MODEL`
+- `REVIEW_OPTIONS`
+- `REVIEW_PROFILE`
 - `SPEC_BRIEF`
 - `PLAN_BRIEF`
 - `TASKS_BRIEF`
@@ -229,11 +275,11 @@ The template must tell the reviewer to:
 Write:
 
 - `review-package.md`
-- `metadata.json` with base/head, roles, spec author model, spec author options, implementation model, implementation options, profile, and truncation notes
+- `metadata.json` with base/head, roles, selected detailed review model, spec author model, spec author options, implementation model, implementation options, profile, and truncation notes
 
 ### 7. Print the next command
 
-Print the exact reviewer command and the output path for `review-report.md`.
+Print the exact reviewer command and the output path for `review-report.md`. For Codex review models, include the selected model ID in the command hint and preserve `speed=priority` in metadata even if the local CLI requires a separate priority mechanism.
 
 If the report later says `Context sufficiency: needs-full-package`, tell the user to rerun:
 
@@ -268,6 +314,7 @@ Special handling:
 - Do not package secrets.
 - Do not dump raw artifacts in compact mode just because they are available.
 - Preserve the reviewer's language when quoting findings back to the user.
+- Do not silently upgrade the configured implementation model. If `model_defaults.dev` says `sonnet-4.6@high`, keep that routing unless the user explicitly overrides it.
 
 ## Related files
 

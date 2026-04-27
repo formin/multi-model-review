@@ -1,6 +1,6 @@
 ---
 description: Export a spec-authoring handoff prompt for the configured development spec model and model-specific options.
-argument-hint: [slug|feature brief] [--model <id>] [--model-option <key=value>] [--implementation-model <id>] [--implementation-option <key=value>]
+argument-hint: [slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]
 allowed-tools: [Read, Write, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git diff --stat:*)]
 ---
 
@@ -14,46 +14,88 @@ Arguments: `$ARGUMENTS`
 
 Default to the model routing in `.cross-review/config.json`.
 
-If config is missing or incomplete, use these defaults and tell the user to run `/multi-model-review:cross-review init` when they want persistent settings:
+If config is missing or incomplete, use these defaults and tell the user to run
+`/multi-model-review:cross-review init` when they want persistent settings:
 
-- `spec_author_model = codex-5.5`
-- `spec_author_options = { "intelligence": "very-high", "speed": "normal" }`
-- `implementation_model = claude-sonnet-4.6`
-- `implementation_options = { "workload": "high" }`
+- `spec = codex-5.5:xhigh@normal`
+- `spec_heavy = opus-4.7:1m@max`
+- `dev = sonnet-4.6@high`
 
-If `$ARGUMENTS` includes `--model opus-4.7`, `--model claude-opus-4.7`, or `--model claude-opus-4.7-1m`, use:
+The legacy fields are still supported:
 
-- `spec_author_model = <selected Claude Opus model>`
-- `spec_author_options = { "context": "1M", "workload": "high" }`
+- `spec_author_model`
+- `spec_author_options`
+- `spec_author_profile`
+- `implementation_model`
+- `implementation_options`
 
-If `$ARGUMENTS` includes `--implementation-model <id>`, use that implementation model for this handoff only.
+## Model spec options
 
-If `$ARGUMENTS` includes one or more `--model-option <key=value>` values, merge them into `spec_author_options` after applying the selected model defaults.
+Preferred detailed options:
 
-If `$ARGUMENTS` includes one or more `--implementation-option <key=value>` values, merge them into `implementation_options` after applying the selected implementation model defaults.
+- `--spec-model <model[:axis]@axis>` overrides `model_defaults.spec` for this handoff.
+- `--heavy` selects `model_defaults.spec_heavy` for this handoff.
+- `--plan` keeps the same handoff command but emphasizes `plan.md` and `tasks.md` output for implementation handoff planning.
+- `--dev-model <model[:axis]@axis>` may be accepted as an alias for `--implementation-model` when the user gives the new detailed syntax.
+
+Compatibility options:
+
+- `--model <id>` still overrides the spec author model.
+- `--model-option <key=value>` still merges into spec author options.
+- `--implementation-model <id>` still overrides the implementation model.
+- `--implementation-option <key=value>` still merges into implementation options.
+
+Detailed model specs use this grammar:
+
+```text
+<model>[:<axis-a>][@<axis-b>]
+```
+
+Examples:
+
+- `codex-5.5:xhigh@normal`
+- `opus-4.7:1m@max`
+- `sonnet-4.6@high`
+
+Parsing rules:
+
+- Preserve the original spec as `raw` in metadata.
+- Codex axis A is reasoning or intelligence: `low`, `medium`, `high`, `xhigh`, `very-high`.
+- Codex axis B is speed or service tier: `normal`, `fast`, `priority`.
+- Claude axis A is context when present: `standard`, `1m`, `1M`.
+- Claude axis B is workload: `low`, `normal`, `high`, `max`.
+- Normalize `xhigh` to legacy `intelligence=very-high` while preserving `reasoning=xhigh`.
+- Normalize `1m` to `1M`.
+- Normalize `sonnet-4.6` to `claude-sonnet-4.6`.
+- Do not silently upgrade or downgrade any axis.
+
+If both `--spec-model` and `--heavy` are present, the explicit `--spec-model`
+wins and the command should mention that `--heavy` was ignored.
 
 ## Steps
 
 1. Load `.cross-review/config.json` when present.
 
 2. Resolve model routing.
-   - `--model <id>` overrides `config.spec_author_model`.
-   - If the selected model is `codex-5.5` or `gpt-5.5`, default `spec_author_options` to `{ "intelligence": "very-high", "speed": "normal" }`.
-   - If the selected model is `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m`, default `spec_author_options` to `{ "context": "1M", "workload": "high" }`.
-   - If config already contains `spec_author_options`, use it unless `--model` changes the model.
-   - If config only contains legacy `spec_author_profile`, derive key/value options from comma-separated `key=value` pairs when possible.
-   - Convert legacy `work=max` to `workload=high` for Claude options unless the user explicitly keeps `work`.
+   - `--spec-model <spec>` overrides `config.model_defaults.spec`.
+   - Else `--heavy` uses `config.model_defaults.spec_heavy`.
+   - Else use `config.model_defaults.spec`.
+   - If `model_defaults` is missing, derive a structured spec from legacy `spec_author_model` and `spec_author_options`.
+   - If the selected model is `codex-5.5` or `gpt-5.5`, default spec options to `{ "intelligence": "very-high", "reasoning": "xhigh", "speed": "normal" }`.
+   - If the selected model is `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m`, default spec options to `{ "context": "1M", "workload": "max" }`.
+   - `--model <id>` is a legacy override. Apply it only when `--spec-model` is not present.
    - Apply each `--model-option <key=value>` override after defaults and config.
-   - Derive `spec_author_profile` from final `spec_author_options` for display.
-   - `--implementation-model <id>` overrides `config.implementation_model`.
-   - Default implementation model is `claude-sonnet-4.6`.
-   - If the implementation model is a Claude model, default `implementation_options` to `{ "workload": "high" }`.
-   - If the implementation model is `claude-opus-4.7-1m`, also set `context = 1M`.
+   - Derive `spec_author_profile` from final options for display.
+   - `--dev-model <spec>` or `--implementation-model <id>` overrides `config.model_defaults.dev`.
+   - Default implementation model is `sonnet-4.6@high`.
+   - If the implementation model is a Claude model, default implementation options to `{ "workload": "high", "allow_silent_upgrade": false }`.
    - Apply each `--implementation-option <key=value>` override after defaults and config.
+   - Never infer a stronger implementation model because the spec looks large. Ask for an explicit override instead.
 
 3. Resolve the feature slug or brief.
    - If the first positional value matches `specs/<slug>/` or a directory under `specs/`, treat it as the feature slug.
    - Otherwise treat the remaining positional text as the feature brief.
+   - Preserve quoted user requirements verbatim when they are short.
    - If neither exists, ask the user for the feature brief before writing a prompt.
 
 4. Gather context.
@@ -83,17 +125,22 @@ If `$ARGUMENTS` includes one or more `--implementation-option <key=value>` value
      - `{{EXISTING_PLAN}}`
      - `{{EXISTING_TASKS}}`
      - `{{OUTPUT_NOTES}}`
+   - If `--plan` is present, make `{{OUTPUT_NOTES}}` emphasize:
+     - non-goals
+     - implementation risks
+     - task IDs that can be implemented independently
+     - assigning implementation tasks to the resolved dev model
+     - no production code edits
 
 7. Write outputs under `.cross-review/spec-handoffs/<YYYYMMDD-HHMM>-<slug>/`.
    - `spec-authoring-prompt.md`
-   - `metadata.json` with timestamp, slug, spec author model, spec author options, spec author profile, implementation model, implementation options, and source notes
+   - `metadata.json` with timestamp, slug, handoff type (`spec` or `plan`), selected detailed spec model, selected detailed implementation model, legacy spec author model/options/profile, legacy implementation model/options, original arguments, and source notes
 
 8. Print the next step.
    - Show the prompt path.
-   - Show the selected spec author model and options.
+   - Show the selected spec model raw string and structured options.
    - Show the derived profile string.
-   - Show the selected implementation model.
-   - Show the selected implementation options.
+   - Show the selected implementation model raw string and structured options.
    - Remind the user to write the model output to `spec-output.md`.
    - Print a command hint only when the local CLI is obvious:
      - `codex-5.5`: `codex exec -m codex-5.5 - < .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md > .cross-review/spec-handoffs/<pkg>/spec-output.md`
