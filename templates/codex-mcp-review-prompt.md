@@ -12,6 +12,11 @@ This file is self-contained. Do not rely on prior conversation state.
 
 - profile: `{{PACKAGE_PROFILE}}`
 - scope: `{{PACKAGE_SCOPE}}`
+- spec author model: `{{SPEC_AUTHOR_MODEL}}`
+- spec author options: `{{SPEC_AUTHOR_OPTIONS}}`
+- spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
+- implementation model: `{{IMPLEMENTATION_MODEL}}`
+- implementation options: `{{IMPLEMENTATION_OPTIONS}}`
 - changed files: `{{CHANGED_FILE_COUNT}}`
 - changed lines: `{{CHANGED_LINE_COUNT}}`
 

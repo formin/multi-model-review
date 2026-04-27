@@ -1,6 +1,6 @@
 # Token Efficiency
 
-`multi-model-review` sits on top of Spec Kit, but cross-model review has a different bottleneck than implementation: the reviewer pays for every token in the handoff package.
+`multi-model-review` sits on top of Spec Kit, but cross-model review has a different bottleneck than implementation: the reviewer pays for every token in the handoff package. The workflow also separates high-reasoning spec authoring from token-heavy implementation so each stage can use the most appropriate model.
 
 This document summarizes the token-efficiency changes added here and how they map to ideas from [rtk](https://github.com/rtk-ai/rtk).
 
@@ -46,6 +46,9 @@ Three profiles are expected:
 
 Recommended defaults:
 
+- development spec author -> `codex-5.5` with `spec_author_options = { "intelligence": "very-high", "speed": "normal" }`
+- spec author alternative -> `opus-4.7` with `spec_author_options = { "context": "1M", "workload": "high" }`
+- implementation -> `claude-sonnet-4.6` with `implementation_options = { "workload": "high" }`
 - `codex-mcp` -> `micro`
 - `codex-auto` -> `compact`
 - `codex-cli` -> `compact`
@@ -59,6 +62,17 @@ Recommended defaults:
 3. rerun with `--full` only if needed
 
 This is the review-package equivalent of RTK's "compact first, raw when necessary" philosophy.
+
+## Spec and implementation routing
+
+For development itself, use a separate spec-authoring handoff before implementation:
+
+1. create `spec-authoring-prompt.md` with `/multi-model-review:spec-handoff`
+2. run `codex-5.5` with `intelligence=very-high, speed=normal`, or `opus-4.7` with `context=1M, workload=high`
+3. apply the returned `spec.md`, `plan.md`, and `tasks.md`
+4. implement with `claude-sonnet-4.6` and `workload=high`
+
+This keeps the expensive reasoning pass focused on durable artifacts and keeps the implementation pass bounded by small, explicit tasks.
 
 ## What stays in compact mode
 

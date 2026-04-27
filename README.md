@@ -1,10 +1,10 @@
 # multi-model-review
 
-Multi-model code review for Spec-Driven Development.
+Multi-model code review and model-routed Spec-Driven Development.
 
-Build with one model, review with a different one. This plugin turns [GitHub Spec Kit](https://github.com/github/spec-kit) artifacts (`spec.md`, `plan.md`, `tasks.md`) plus your git diff into a portable review handoff that any CLI-capable model can consume.
+Write specs with one model, implement with another, and review with a different one. This plugin turns [GitHub Spec Kit](https://github.com/github/spec-kit) artifacts (`spec.md`, `plan.md`, `tasks.md`) plus your git diff into portable handoffs that any CLI-capable model can consume.
 
-The reviewer does not need to share your current session. The handoff lives on disk as markdown, and you run the reviewer yourself.
+The spec author or reviewer does not need to share your current session. Each handoff lives on disk as markdown, and you run the other model yourself.
 
 ## Why multi-model?
 
@@ -21,11 +21,57 @@ Spec Kit is excellent at the single-agent flow:
 - `/speckit.tasks`
 - `/speckit.implement`
 
-`multi-model-review` is the cross-model loop that fits after implementation:
+`multi-model-review` is the cross-model loop around that flow:
 
+- a spec-authoring model creates or refines `spec.md`, `plan.md`, and `tasks.md`
+- the implementation model builds the feature
 - the builder creates a review package
 - the reviewer reads that package and writes `review-report.md`
 - the builder ingests the report and applies fixes
+
+## Recommended model routing
+
+| Stage | Default | Notes |
+|-------|---------|-------|
+| Spec authoring | `codex-5.5` | Use `intelligence=very-high, speed=normal` |
+| Spec authoring alternative | `opus-4.7` | Use `context=1M, workload=high` |
+| Implementation | `claude-sonnet-4.6` | Use `workload=high` for token-heavy development work |
+| Review | `codex-auto` | Compact package first, CLI fallback for larger reviews |
+
+The routing is stored in `.cross-review/config.json`, so the skill can keep the spec-writing model, model-specific options, and the implementation model distinct throughout packaging and review.
+
+Example spec author options:
+
+```json
+{
+  "spec_author_model": "codex-5.5",
+  "spec_author_options": {
+    "intelligence": "very-high",
+    "speed": "normal"
+  }
+}
+```
+
+```json
+{
+  "spec_author_model": "opus-4.7",
+  "spec_author_options": {
+    "context": "1M",
+    "workload": "high"
+  }
+}
+```
+
+UI option mapping:
+
+| UI | Config key | Values |
+|----|------------|--------|
+| Codex model | `spec_author_model` | `codex-5.5` or `gpt-5.5` for the GPT-5.5 UI entry |
+| Codex intelligence | `intelligence` | `low`, `medium`, `high`, `very-high` |
+| Codex speed | `speed` | `normal`, `fast` |
+| Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
+| Claude context | `context` | `standard`, `1M` |
+| Claude workload | `workload` | `low`, `normal`, `high` |
 
 ## Compact-first packaging
 
@@ -113,9 +159,20 @@ Inside your project:
 Typical answers:
 
 - `builder = claude-code`
+- `spec_author_model = codex-5.5`
+- `spec_author_options = {"intelligence":"very-high","speed":"normal"}`
+- `spec_author_profile = intelligence=very-high, speed=normal`
+- `implementation_model = claude-sonnet-4.6`
+- `implementation_options = {"workload":"high"}`
 - `reviewer = codex-auto`
 - `base ref = main`
 - `package profile = compact`
+
+Create a spec-authoring handoff when you want the configured spec model to write or refine the development artifacts:
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework
+```
 
 Then implement your feature as usual and package it:
 
@@ -156,11 +213,72 @@ Or scope it tighter:
 /multi-model-review:review-package --paths src/auth,src/api
 ```
 
+## Basic usage examples
+
+### Codex 5.5 writes specs, Claude Sonnet 4.6 implements
+
+Use this when you want Codex to spend the deep reasoning budget on durable Spec Kit artifacts, then keep implementation on Sonnet 4.6.
+
+```json
+{
+  "builder": "claude-code",
+  "spec_author_model": "codex-5.5",
+  "spec_author_options": {
+    "intelligence": "very-high",
+    "speed": "normal"
+  },
+  "implementation_model": "claude-sonnet-4.6",
+  "implementation_options": {
+    "workload": "high"
+  },
+  "reviewer": "codex-auto",
+  "base_ref": "main",
+  "package_profile": "compact"
+}
+```
+
+Then run:
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework
+/multi-model-review:review-package 001-auth-rework
+/multi-model-review:apply-review
+```
+
+### Opus 4.7 1M writes specs, Claude Sonnet 4.6 implements
+
+Use this when the spec pass needs the Claude 1M context option and high workload setting.
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework --model claude-opus-4.7-1m --model-option context=1M --model-option workload=high --implementation-model claude-sonnet-4.6 --implementation-option workload=high
+```
+
+Equivalent config:
+
+```json
+{
+  "builder": "claude-code",
+  "spec_author_model": "claude-opus-4.7-1m",
+  "spec_author_options": {
+    "context": "1M",
+    "workload": "high"
+  },
+  "implementation_model": "claude-sonnet-4.6",
+  "implementation_options": {
+    "workload": "high"
+  },
+  "reviewer": "codex-auto",
+  "base_ref": "main",
+  "package_profile": "compact"
+}
+```
+
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `/multi-model-review:cross-review [init|status]` | configure roles and defaults |
+| `/multi-model-review:cross-review [init|status]` | configure model routing, roles, and defaults |
+| `/multi-model-review:spec-handoff [slug|brief] [--model <id>] [--model-option <key=value>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec authoring handoff |
 | `/multi-model-review:review-package [slug] [--base <ref>] [--full] [--paths <glob,...>]` | export the reviewer handoff |
 | `/multi-model-review:apply-review [path] [--min-confidence N]` | ingest the report and apply fixes |
 
