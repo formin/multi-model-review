@@ -1,12 +1,16 @@
 # Worked example
 
-End-to-end example: Claude builds a feature, Codex reviews it, Claude ingests the findings.
+End-to-end example: Codex writes the development specs, Claude Sonnet implements the feature, Codex reviews it, and Claude ingests the findings.
 
 ## Scenario
 
 You are on `feat/magic-link-auth`.
 
 - builder: Claude Code
+- spec author model: Codex 5.5
+- spec author options: intelligence=very-high, speed=normal
+- implementation model: Claude Sonnet 4.6
+- implementation options: workload=high
 - reviewer: Codex CLI
 - base ref: `main`
 - package profile: `compact`
@@ -17,11 +21,13 @@ You are on `feat/magic-link-auth`.
 | Step | Where | Action | Artifact |
 |------|-------|--------|----------|
 | 1 | Claude | `/multi-model-review:cross-review init` | `.cross-review/config.json` |
-| 2 | Claude | implement and commit | source changes |
-| 3 | Claude | `/multi-model-review:review-package` | `review-package.md`, `metadata.json` |
-| 4 | terminal | `codex exec --file ... > review-report.md` | `review-report.md` |
-| 5 | Claude | `/multi-model-review:apply-review` | fixes + `review-state.json` |
-| 6 | Claude or shell | commit fixes | updated branch |
+| 2 | Claude | `/multi-model-review:spec-handoff` | `spec-authoring-prompt.md`, `metadata.json` |
+| 3 | terminal | run Codex 5.5 on the spec handoff | `spec-output.md` |
+| 4 | Claude Sonnet 4.6 | implement and commit | source changes |
+| 5 | Claude | `/multi-model-review:review-package` | `review-package.md`, `metadata.json` |
+| 6 | terminal | `codex exec --file ... > review-report.md` | `review-report.md` |
+| 7 | Claude | `/multi-model-review:apply-review` | fixes + `review-state.json` |
+| 8 | Claude or shell | commit fixes | updated branch |
 
 ## 1. Initialize
 
@@ -32,12 +38,43 @@ You are on `feat/magic-link-auth`.
 Answers:
 
 - builder: `claude-code`
+- spec author model: `codex-5.5`
+- spec author options: `{"intelligence":"very-high","speed":"normal"}`
+- implementation model: `claude-sonnet-4.6`
+- implementation options: `{"workload":"high"}`
 - reviewer: `codex-cli`
 - base ref: `main`
 - package profile: `compact`
 - spec dir: `specs/042-magic-link-auth`
 
-## 2. Export the package
+## 2. Export the spec handoff
+
+```text
+/multi-model-review:spec-handoff 042-magic-link-auth
+```
+
+Example output:
+
+```text
+Spec handoff written to:
+  .cross-review/spec-handoffs/20260421-1410-magic-link-auth/spec-authoring-prompt.md
+
+Spec author model:
+  codex-5.5
+
+Spec author options:
+  intelligence=very-high, speed=normal
+
+Implementation model:
+  claude-sonnet-4.6
+
+Implementation options:
+  workload=high
+```
+
+Run Codex 5.5 against the prompt and review the returned `spec.md`, `plan.md`, and `tasks.md` file blocks before applying them.
+
+## 3. Export the review package
 
 ```text
 /multi-model-review:review-package
@@ -66,7 +103,7 @@ Run the reviewer:
   codex exec --file .cross-review/packages/20260421-1430-magic-link-auth/review-package.md > .cross-review/packages/20260421-1430-magic-link-auth/review-report.md
 ```
 
-## 3. Codex reviews it
+## 4. Codex reviews it
 
 Codex writes:
 
@@ -101,7 +138,7 @@ The magic-link flow is mostly implemented, but the verification path appears to 
 
 Because the context was `limited-but-actionable`, Claude can proceed without re-packaging.
 
-## 4. Claude ingests the report
+## 5. Claude ingests the report
 
 ```text
 /multi-model-review:apply-review
@@ -109,7 +146,7 @@ Because the context was `limited-but-actionable`, Claude can proceed without re-
 
 Claude presents a checklist, reads the cited files, proposes targeted edits, and applies them one at a time after confirmation.
 
-## 5. What happens if compact was not enough?
+## 6. What happens if compact was not enough?
 
 If Codex had written:
 

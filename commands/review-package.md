@@ -1,5 +1,5 @@
 ---
-description: Export a compact multi-model review package for the reviewer model.
+description: Export a compact multi-model review package for the reviewer model, including spec-author and implementation model metadata.
 argument-hint: [slug] [--base <ref>] [--full] [--paths <glob,...>]
 allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*)]
 ---
@@ -21,6 +21,17 @@ Default to a **compact** package. Use `--full` only when:
 
 1. Load `.cross-review/config.json`.
    - If missing, abort with: "Run `/multi-model-review:cross-review init` first."
+   - Read `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, and `implementation_options`.
+   - If model routing keys are missing, use:
+     - `spec_author_model = codex-5.5`
+     - `spec_author_options = { "intelligence": "very-high", "speed": "normal" }`
+     - `implementation_model = claude-sonnet-4.6`
+     - `implementation_options = { "workload": "high" }`
+   - If the selected spec author model is `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m` and options are missing, use `spec_author_options = { "context": "1M", "workload": "high" }`.
+   - If the selected implementation model is a Claude model and options are missing, use `implementation_options = { "workload": "high" }`.
+   - If the selected implementation model is `claude-opus-4.7-1m` and options are missing, add `context = 1M`.
+   - Derive `spec_author_profile` from `spec_author_options` when the profile string is missing.
+   - Include a package note that those defaults were inferred from missing config.
 
 2. Resolve the feature slug.
    - If `$ARGUMENTS` contains a positional slug, use `specs/<slug>/`.
@@ -64,6 +75,11 @@ Default to a **compact** package. Use `--full` only when:
 
    - `{{PACKAGE_PROFILE}}`
    - `{{PACKAGE_SCOPE}}`
+   - `{{SPEC_AUTHOR_MODEL}}`
+   - `{{SPEC_AUTHOR_OPTIONS}}`
+   - `{{SPEC_AUTHOR_PROFILE}}`
+   - `{{IMPLEMENTATION_MODEL}}`
+   - `{{IMPLEMENTATION_OPTIONS}}`
    - `{{CHANGED_FILE_COUNT}}`
    - `{{CHANGED_LINE_COUNT}}`
    - `{{SPEC_BRIEF}}`: objective, acceptance criteria, explicit constraints, non-goals
@@ -100,11 +116,11 @@ Default to a **compact** package. Use `--full` only when:
 
 9. Render the template.
    - Substitute all package metadata, brief, appendix, and path placeholders.
-   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, and `{{REPORT_PATH}}`.
+   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, `{{REPORT_PATH}}`, `{{SPEC_AUTHOR_MODEL}}`, `{{SPEC_AUTHOR_OPTIONS}}`, `{{SPEC_AUTHOR_PROFILE}}`, `{{IMPLEMENTATION_MODEL}}`, and `{{IMPLEMENTATION_OPTIONS}}`.
 
 10. Write outputs under `.cross-review/packages/<YYYYMMDD-HHMM>-<slug>/`.
    - `review-package.md`
-   - `metadata.json` with base, head, builder, reviewer, timestamp, slug, package profile, and truncation notes
+   - `metadata.json` with base, head, builder, reviewer, spec author model, spec author options, spec author profile, implementation model, implementation options, timestamp, slug, package profile, and truncation notes
 
 11. Print the next step.
    - Show the package path.

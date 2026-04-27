@@ -1,6 +1,6 @@
 {
   "name": "multi-model-review",
-  "description": "Cross-agent code review workflow for Spec-Driven Development. Build with one agent (Claude/Codex), review with the other, using portable spec-kit artifacts as the handoff surface.",
+  "description": "Cross-agent Spec-Driven Development workflow. Route spec authoring, implementation, and review across Claude, Codex, Gemini, or other CLI-capable models using portable Spec Kit artifacts.",
   "version": "0.1.0",
   "author": {
     "name": "formin",

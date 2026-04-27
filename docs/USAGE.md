@@ -9,6 +9,25 @@ Step-by-step walkthrough for `multi-model-review`.
 - at least one reviewer model installed locally
 - Spec Kit is recommended, but not required
 
+Recommended model routing:
+
+| Stage | Model |
+|-------|-------|
+| development spec author | `codex-5.5` with `intelligence=very-high, speed=normal` |
+| spec author alternative | `opus-4.7` with `context=1M, workload=high` |
+| actual development implementation | `claude-sonnet-4.6` with `workload=high` |
+
+UI option mapping:
+
+| UI | Config key | Values |
+|----|------------|--------|
+| Codex model | `spec_author_model` | `codex-5.5` or `gpt-5.5` for the GPT-5.5 UI entry |
+| Codex intelligence | `intelligence` | `low`, `medium`, `high`, `very-high` |
+| Codex speed | `speed` | `normal`, `fast` |
+| Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
+| Claude context | `context` | `standard`, `1M` |
+| Claude workload | `workload` | `low`, `normal`, `high` |
+
 Supported reviewer examples:
 
 - Codex CLI
@@ -29,6 +48,10 @@ Typical answers:
 | Prompt | Example |
 |--------|---------|
 | builder | `claude-code` |
+| spec author model | `codex-5.5` |
+| spec author options | `{"intelligence":"very-high","speed":"normal"}` |
+| implementation model | `claude-sonnet-4.6` |
+| implementation options | `{"workload":"high"}` |
 | reviewer | `codex-auto` |
 | base ref | `main` |
 | package profile | `compact` |
@@ -39,6 +62,15 @@ Example config:
 ```json
 {
   "builder": "claude-code",
+  "spec_author_model": "codex-5.5",
+  "spec_author_options": {
+    "intelligence": "very-high",
+    "speed": "normal"
+  },
+  "implementation_model": "claude-sonnet-4.6",
+  "implementation_options": {
+    "workload": "high"
+  },
   "reviewer": "codex-auto",
   "base_ref": "main",
   "spec_dir": "specs/001-auth-rework",
@@ -46,16 +78,47 @@ Example config:
 }
 ```
 
-## 3. Build the feature
+## 3. Prepare development specs
+
+When you want a stronger or longer-context model to write or refine the Spec Kit artifacts before development, create a spec handoff:
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework
+```
+
+Override model routing for a single handoff when needed:
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework --model opus-4.7
+/multi-model-review:spec-handoff 001-auth-rework --model codex-5.5 --model-option intelligence=very-high --model-option speed=normal
+/multi-model-review:spec-handoff 001-auth-rework --model opus-4.7 --model-option context=1M --model-option workload=high
+/multi-model-review:spec-handoff "Add magic-link auth" --implementation-model claude-sonnet-4.6 --implementation-option workload=high
+```
+
+`spec_author_options` is the source of truth. `spec_author_profile` may still appear in generated prompts as a readable summary, for example `intelligence=very-high, speed=normal`.
+
+The command writes:
+
+```text
+.cross-review/spec-handoffs/<YYYYMMDD-HHMM>-<slug>/
+  spec-authoring-prompt.md
+  metadata.json
+```
+
+Run the selected spec author model yourself and save its output as `spec-output.md`. Apply the returned file blocks to `spec.md`, `plan.md`, and `tasks.md` after reviewing them.
+
+## 4. Build the feature
 
 Implement the feature however you normally work:
 
 - Spec Kit path: `/speckit.specify`, `/speckit.plan`, `/speckit.tasks`, `/speckit.implement`
 - ad-hoc path: edit code directly
 
+Use the configured `implementation_model` and `implementation_options` for the token-heavy implementation pass. The default is `claude-sonnet-4.6` with `workload=high`.
+
 Commit the branch when possible. The reviewer can inspect uncommitted changes in the diff, but the commit trail is more useful when commits exist.
 
-## 4. Export the review package
+## 5. Export the review package
 
 ```text
 /multi-model-review:review-package
@@ -84,7 +147,7 @@ What the command now does:
 
 The compact package contains summaries, a diff manifest, focused excerpts, and omission notes. It does not dump every raw artifact by default.
 
-## 5. Run the reviewer yourself
+## 6. Run the reviewer yourself
 
 Examples:
 
@@ -98,7 +161,7 @@ claude -p "$(cat $PKG/review-package.md)" > $PKG/review-report.md
 
 For `codex-mcp`, the skill may use the MCP path inline for very small packages. Anything longer should move to the CLI path.
 
-## 6. Review report structure
+## 7. Review report structure
 
 The reviewer writes `review-report.md` using [templates/review-report.md](../templates/review-report.md).
 
@@ -115,7 +178,7 @@ Important fields:
 - `limited-but-actionable`: proceed, but note the scope warning
 - `needs-full-package`: rerun packaging with more context
 
-## 7. Ingest the report
+## 8. Ingest the report
 
 ```text
 /multi-model-review:apply-review
@@ -136,7 +199,7 @@ Default behavior:
 4. present a checklist
 5. apply accepted findings one at a time
 
-## 8. When to rerun with `--full`
+## 9. When to rerun with `--full`
 
 Use `--full` when:
 
@@ -147,7 +210,7 @@ Use `--full` when:
 
 Do not default to `--full` for every review. The compact package is the normal path.
 
-## 9. When to use `--paths`
+## 10. When to use `--paths`
 
 Use `--paths` when the full branch is too large but the issue is local:
 
@@ -157,7 +220,7 @@ Use `--paths` when the full branch is too large but the issue is local:
 
 This often gives better signal than switching blindly to a huge `--full` package.
 
-## 10. RTK-inspired behavior
+## 11. RTK-inspired behavior
 
 The package strategy borrows the same ideas that RTK applies to shell output:
 
@@ -168,7 +231,7 @@ The package strategy borrows the same ideas that RTK applies to shell output:
 
 See [TOKEN_EFFICIENCY.md](TOKEN_EFFICIENCY.md) for the detailed mapping.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### No `specs/<slug>` directory found
 
