@@ -6,7 +6,7 @@ This file is self-contained. Do not rely on prior conversation state.
 
 > Invocation mode: `codex-cli`
 >
-> You are running through `codex exec --file`, so there is no 60-second MCP ceiling. Review thoroughly, but still respect the compact package design. If important context is missing, say so using `Context sufficiency`.
+> You are running through `codex exec -m <review_model> --file`, so there is no 60-second MCP ceiling. Review thoroughly, but still respect the compact package design. If important context is missing, say so using `Context sufficiency`.
 
 ## 1. Package profile
 
@@ -17,6 +17,9 @@ This file is self-contained. Do not rely on prior conversation state.
 - spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
 - implementation model: `{{IMPLEMENTATION_MODEL}}`
 - implementation options: `{{IMPLEMENTATION_OPTIONS}}`
+- review model: `{{REVIEW_MODEL}}`
+- review options: `{{REVIEW_OPTIONS}}`
+- review profile: `{{REVIEW_PROFILE}}`
 - changed files: `{{CHANGED_FILE_COUNT}}`
 - changed lines: `{{CHANGED_LINE_COUNT}}`
 

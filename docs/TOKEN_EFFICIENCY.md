@@ -46,9 +46,10 @@ Three profiles are expected:
 
 Recommended defaults:
 
-- development spec author -> `codex-5.5` with `spec_author_options = { "intelligence": "very-high", "speed": "normal" }`
-- spec author alternative -> `opus-4.7` with `spec_author_options = { "context": "1M", "workload": "high" }`
-- implementation -> `claude-sonnet-4.6` with `implementation_options = { "workload": "high" }`
+- development spec author -> `codex-5.5:xhigh@normal`
+- heavy spec author -> `opus-4.7:1m@max`
+- implementation -> `sonnet-4.6@high` with silent upgrade disabled
+- review -> `codex-5.5:high@normal`
 - `codex-mcp` -> `micro`
 - `codex-auto` -> `compact`
 - `codex-cli` -> `compact`
@@ -68,9 +69,9 @@ This is the review-package equivalent of RTK's "compact first, raw when necessar
 For development itself, use a separate spec-authoring handoff before implementation:
 
 1. create `spec-authoring-prompt.md` with `/multi-model-review:spec-handoff`
-2. run `codex-5.5` with `intelligence=very-high, speed=normal`, or `opus-4.7` with `context=1M, workload=high`
+2. run `codex-5.5:xhigh@normal`, or use `--heavy` for `opus-4.7:1m@max`
 3. apply the returned `spec.md`, `plan.md`, and `tasks.md`
-4. implement with `claude-sonnet-4.6` and `workload=high`
+4. implement with `sonnet-4.6@high` unless the user explicitly overrides the dev model
 
 This keeps the expensive reasoning pass focused on durable artifacts and keeps the implementation pass bounded by small, explicit tasks.
 

@@ -17,6 +17,9 @@ This file is self-contained. Do not rely on prior conversation state.
 - spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
 - implementation model: `{{IMPLEMENTATION_MODEL}}`
 - implementation options: `{{IMPLEMENTATION_OPTIONS}}`
+- review model: `{{REVIEW_MODEL}}`
+- review options: `{{REVIEW_OPTIONS}}`
+- review profile: `{{REVIEW_PROFILE}}`
 - changed files: `{{CHANGED_FILE_COUNT}}`
 - changed lines: `{{CHANGED_LINE_COUNT}}`
 

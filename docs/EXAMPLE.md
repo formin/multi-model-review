@@ -7,11 +7,11 @@ End-to-end example: Codex writes the development specs, Claude Sonnet implements
 You are on `feat/magic-link-auth`.
 
 - builder: Claude Code
-- spec author model: Codex 5.5
-- spec author options: intelligence=very-high, speed=normal
-- implementation model: Claude Sonnet 4.6
-- implementation options: workload=high
-- reviewer: Codex CLI
+- spec default: `codex-5.5:xhigh@normal`
+- heavy spec default: `opus-4.7:1m@max`
+- implementation default: `sonnet-4.6@high`
+- review default: `codex-5.5:high@normal`
+- reviewer surface: Codex CLI
 - base ref: `main`
 - package profile: `compact`
 - spec dir: `specs/042-magic-link-auth`
@@ -25,23 +25,27 @@ You are on `feat/magic-link-auth`.
 | 3 | terminal | run Codex 5.5 on the spec handoff | `spec-output.md` |
 | 4 | Claude Sonnet 4.6 | implement and commit | source changes |
 | 5 | Claude | `/multi-model-review:review-package` | `review-package.md`, `metadata.json` |
-| 6 | terminal | `codex exec --file ... > review-report.md` | `review-report.md` |
+| 6 | terminal | `codex exec -m codex-5.5 --file ... > review-report.md` | `review-report.md` |
 | 7 | Claude | `/multi-model-review:apply-review` | fixes + `review-state.json` |
 | 8 | Claude or shell | commit fixes | updated branch |
 
 ## 1. Initialize
 
 ```text
-/multi-model-review:cross-review init
+/multi-model-review:cross-review init \
+  --spec codex-5.5:xhigh@normal \
+  --spec-heavy opus-4.7:1m@max \
+  --dev sonnet-4.6@high \
+  --review codex-5.5:high@normal
 ```
 
 Answers:
 
 - builder: `claude-code`
-- spec author model: `codex-5.5`
-- spec author options: `{"intelligence":"very-high","speed":"normal"}`
-- implementation model: `claude-sonnet-4.6`
-- implementation options: `{"workload":"high"}`
+- spec default: `codex-5.5:xhigh@normal`
+- heavy spec default: `opus-4.7:1m@max`
+- implementation default: `sonnet-4.6@high`
+- review default: `codex-5.5:high@normal`
 - reviewer: `codex-cli`
 - base ref: `main`
 - package profile: `compact`
@@ -50,7 +54,7 @@ Answers:
 ## 2. Export the spec handoff
 
 ```text
-/multi-model-review:spec-handoff 042-magic-link-auth
+/multi-model-review:spec-handoff 042-magic-link-auth --spec-model codex-5.5:xhigh@normal
 ```
 
 Example output:
@@ -63,13 +67,13 @@ Spec author model:
   codex-5.5
 
 Spec author options:
-  intelligence=very-high, speed=normal
+  intelligence=very-high, reasoning=xhigh, speed=normal
 
 Implementation model:
   claude-sonnet-4.6
 
 Implementation options:
-  workload=high
+  workload=high, allow_silent_upgrade=false
 ```
 
 Run Codex 5.5 against the prompt and review the returned `spec.md`, `plan.md`, and `tasks.md` file blocks before applying them.
@@ -77,7 +81,7 @@ Run Codex 5.5 against the prompt and review the returned `spec.md`, `plan.md`, a
 ## 3. Export the review package
 
 ```text
-/multi-model-review:review-package
+/multi-model-review:review-package --review-model codex-5.5:high@normal
 ```
 
 The package is compact-first, so the reviewer sees:
@@ -100,7 +104,7 @@ Profile:
   compact
 
 Run the reviewer:
-  codex exec --file .cross-review/packages/20260421-1430-magic-link-auth/review-package.md > .cross-review/packages/20260421-1430-magic-link-auth/review-report.md
+  codex exec -m codex-5.5 --file .cross-review/packages/20260421-1430-magic-link-auth/review-package.md > .cross-review/packages/20260421-1430-magic-link-auth/review-report.md
 ```
 
 ## 4. Codex reviews it

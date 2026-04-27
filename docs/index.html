@@ -173,13 +173,13 @@
           <tr><th>Stage</th><th>Default</th></tr>
         </thead>
         <tbody>
-          <tr><td>Spec authoring</td><td><code>codex-5.5</code> with <code>{"intelligence":"very-high","speed":"normal"}</code></td></tr>
-          <tr><td>Spec authoring alternative</td><td><code>opus-4.7</code> with <code>{"context":"1M","workload":"high"}</code></td></tr>
-          <tr><td>Implementation</td><td><code>claude-sonnet-4.6</code> with <code>{"workload":"high"}</code></td></tr>
-          <tr><td>Review</td><td><code>codex-auto</code> or another reviewer</td></tr>
+          <tr><td>Spec authoring</td><td><code>codex-5.5:xhigh@normal</code></td></tr>
+          <tr><td>Heavy spec authoring</td><td><code>opus-4.7:1m@max</code></td></tr>
+          <tr><td>Implementation</td><td><code>sonnet-4.6@high</code>, with silent upgrade disabled</td></tr>
+          <tr><td>Review</td><td><code>codex-5.5:high@normal</code></td></tr>
         </tbody>
       </table>
-      <p>Codex GPT-5.5 maps to <code>codex-5.5</code> or <code>gpt-5.5</code> plus <code>intelligence</code> and <code>speed</code>. Claude options map to model selection, <code>context</code>, and <code>workload</code>.</p>
+      <p>Detailed model specs use <code>&lt;model&gt;[:&lt;axis-a&gt;][@&lt;axis-b&gt;]</code>. Codex axes map to <code>reasoning</code> and <code>speed</code>; Claude axes map to <code>context</code> and <code>workload</code>.</p>
     </section>
 
     <div class="ad-slot">
@@ -223,9 +223,9 @@ claude plugin list</code></pre>
           <tr><th>Invocation</th><th>Purpose</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>/multi-model-review:cross-review [init|status]</code></td><td>configure model routing, reviewer, base ref, and default package profile</td></tr>
-          <tr><td><code>/multi-model-review:spec-handoff [slug|brief] [--model-option &lt;key=value&gt;] [--implementation-option &lt;key=value&gt;]</code></td><td>export the development spec authoring handoff</td></tr>
-          <tr><td><code>/multi-model-review:review-package [slug] [--base &lt;ref&gt;] [--full] [--paths &lt;glob,...&gt;]</code></td><td>export the compact reviewer handoff</td></tr>
+          <tr><td><code>/multi-model-review:cross-review [init|status|models set] [--spec &lt;model[:axis]@axis&gt;] [--spec-heavy &lt;model[:axis]@axis&gt;] [--dev &lt;model[:axis]@axis&gt;] [--review &lt;model[:axis]@axis&gt;]</code></td><td>configure model routing, reviewer, base ref, and default package profile</td></tr>
+          <tr><td><code>/multi-model-review:spec-handoff [slug|brief] [--spec-model &lt;model[:axis]@axis&gt;] [--heavy] [--plan]</code></td><td>export the development spec or plan handoff</td></tr>
+          <tr><td><code>/multi-model-review:review-package [slug|task-id] [--review-model &lt;model[:axis]@axis&gt;] [--base &lt;ref&gt;] [--full] [--paths &lt;glob,...&gt;]</code></td><td>export the compact reviewer handoff</td></tr>
           <tr><td><code>/multi-model-review:apply-review [path] [--min-confidence N]</code></td><td>ingest the review report and walk through fixes</td></tr>
         </tbody>
       </table>
@@ -234,10 +234,10 @@ claude plugin list</code></pre>
     <section>
       <h2>Quick workflow</h2>
       <ol>
-        <li>Run <code>/multi-model-review:cross-review init</code>.</li>
-        <li>Run <code>/multi-model-review:spec-handoff</code> to prepare specs with the configured spec author model.</li>
-        <li>Implement the feature with your configured implementation model.</li>
-        <li>Run <code>/multi-model-review:review-package</code> to create a compact package.</li>
+        <li>Run <code>/multi-model-review:cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal</code>.</li>
+        <li>Run <code>/multi-model-review:spec-handoff --spec-model codex-5.5:xhigh@normal</code> or add <code>--heavy</code> for a large audit.</li>
+        <li>Implement the feature with your configured implementation model; silent upgrade is disabled by default.</li>
+        <li>Run <code>/multi-model-review:review-package --review-model codex-5.5:high@normal</code> to create a compact package.</li>
         <li>Run the reviewer model on that package in another terminal.</li>
         <li>Run <code>/multi-model-review:apply-review</code> to apply accepted findings.</li>
       </ol>
