@@ -148,6 +148,7 @@
         <span class="badge">Compact-first</span>
         <span class="badge">Codex 5.5 / Opus 4.7 specs</span>
         <span class="badge">Claude Sonnet 4.6 implementation</span>
+        <span class="badge">Auto subagent routing</span>
         <span class="badge">MIT</span>
       </div>
       <div>
@@ -159,7 +160,7 @@
       <h2>Why multi-model?</h2>
       <p>A model reviewing its own output often rationalizes. A different model can catch different classes of issues, and this project makes that handoff cheap enough to do regularly.</p>
       <ul>
-        <li>separate model routing for spec authoring, implementation, and review</li>
+        <li>separate model routing for spec authoring, implementation, subagent task slices, and review</li>
         <li>portable markdown package instead of shared session state</li>
         <li>compact-first packaging to reduce token cost</li>
         <li>confidence-gated findings for easier remediation</li>
@@ -177,9 +178,27 @@
           <tr><td>Heavy spec authoring</td><td><code>opus-4.7:1m@max</code></td></tr>
           <tr><td>Implementation</td><td><code>sonnet-4.6@high</code>, with silent upgrade disabled</td></tr>
           <tr><td>Review</td><td><code>codex-5.5:high@normal</code></td></tr>
+          <tr><td>Fast subagent scout</td><td><code>haiku-4.5@normal</code></td></tr>
+          <tr><td>Subagent routing</td><td><code>auto</code>, balanced policy</td></tr>
         </tbody>
       </table>
       <p>Detailed model specs use <code>&lt;model&gt;[:&lt;axis-a&gt;][@&lt;axis-b&gt;]</code>. Codex axes map to <code>reasoning</code> and <code>speed</code>; Claude axes map to <code>context</code> and <code>workload</code>.</p>
+    </section>
+
+    <section>
+      <h2>Automatic subagent routing</h2>
+      <p>The plugin ships Claude Code subagents for fast scouting, heavy planning, scoped implementation, and local review checks. When <code>subagent_routing.mode</code> is <code>auto</code>, task hints such as <code>[route:scout]</code> or <code>[route:worker]</code> let Claude Code pick the matching subagent and configured role model.</p>
+      <table>
+        <thead>
+          <tr><th>Route</th><th>Subagent</th><th>Default model</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>scout</code></td><td><code>mmr-context-scout</code></td><td><code>haiku</code></td></tr>
+          <tr><td><code>heavy-planner</code></td><td><code>mmr-heavy-planner</code></td><td><code>opus</code></td></tr>
+          <tr><td><code>worker</code></td><td><code>mmr-implementation-worker</code></td><td><code>sonnet</code></td></tr>
+          <tr><td><code>review-checker</code></td><td><code>mmr-review-checker</code></td><td><code>sonnet</code></td></tr>
+        </tbody>
+      </table>
     </section>
 
     <div class="ad-slot">
@@ -223,10 +242,10 @@ claude plugin list</code></pre>
           <tr><th>Invocation</th><th>Purpose</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>/multi-model-review:cross-review [init|status|models set] [--spec &lt;model[:axis]@axis&gt;] [--spec-heavy &lt;model[:axis]@axis&gt;] [--dev &lt;model[:axis]@axis&gt;] [--review &lt;model[:axis]@axis&gt;]</code></td><td>configure model routing, reviewer, base ref, and default package profile</td></tr>
-          <tr><td><code>/multi-model-review:spec-handoff [slug|brief] [--spec-model &lt;model[:axis]@axis&gt;] [--heavy] [--plan]</code></td><td>export the development spec or plan handoff</td></tr>
+          <tr><td><code>/multi-model-review:cross-review [init|status|models set] [--spec &lt;model[:axis]@axis&gt;] [--spec-heavy &lt;model[:axis]@axis&gt;] [--dev &lt;model[:axis]@axis&gt;] [--review &lt;model[:axis]@axis&gt;] [--subagents auto|off]</code></td><td>configure model routing, subagent roles, reviewer, base ref, and default package profile</td></tr>
+          <tr><td><code>/multi-model-review:spec-handoff [slug|brief] [--spec-model &lt;model[:axis]@axis&gt;] [--heavy] [--plan] [--subagents auto|off]</code></td><td>export the development spec or plan handoff</td></tr>
           <tr><td><code>/multi-model-review:review-package [slug|task-id] [--review-model &lt;model[:axis]@axis&gt;] [--base &lt;ref&gt;] [--full] [--paths &lt;glob,...&gt;]</code></td><td>export the compact reviewer handoff</td></tr>
-          <tr><td><code>/multi-model-review:apply-review [path] [--min-confidence N]</code></td><td>ingest the review report and walk through fixes</td></tr>
+          <tr><td><code>/multi-model-review:apply-review [path] [--min-confidence N] [--subagents auto|off]</code></td><td>ingest the review report and walk through fixes</td></tr>
         </tbody>
       </table>
     </section>
@@ -234,9 +253,9 @@ claude plugin list</code></pre>
     <section>
       <h2>Quick workflow</h2>
       <ol>
-        <li>Run <code>/multi-model-review:cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal</code>.</li>
+        <li>Run <code>/multi-model-review:cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto</code>.</li>
         <li>Run <code>/multi-model-review:spec-handoff --spec-model codex-5.5:xhigh@normal</code> or add <code>--heavy</code> for a large audit.</li>
-        <li>Implement the feature with your configured implementation model; silent upgrade is disabled by default.</li>
+        <li>Implement the feature with your configured implementation model and route clear slices to the matching subagent; silent upgrade is disabled by default.</li>
         <li>Run <code>/multi-model-review:review-package --review-model codex-5.5:high@normal</code> to create a compact package.</li>
         <li>Run the reviewer model on that package in another terminal.</li>
         <li>Run <code>/multi-model-review:apply-review</code> to apply accepted findings.</li>

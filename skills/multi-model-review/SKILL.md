@@ -1,12 +1,12 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, and review, exporting a cross-model code review package, or invoking /multi-model-review:cross-review, /multi-model-review:spec-handoff, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill creates portable markdown handoffs between spec-author, implementation, and reviewer models.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, and review, exporting a cross-model code review package, or invoking /multi-model-review:cross-review, /multi-model-review:spec-handoff, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
 license: MIT
 ---
 
 # Multi-Model Spec Review
 
-Coordinate a "spec author model -> implementation model -> reviewer model" workflow across different LLMs on top of GitHub Spec Kit artifacts. The skill does not invoke the other model directly. It creates portable handoff packages, and later ingests the review report the user brings back.
+Coordinate a "spec author model -> implementation model -> reviewer model" workflow across different LLMs on top of GitHub Spec Kit artifacts. External models still move through portable handoff packages. Claude Code implementation work can additionally use the plugin's subagents so scout, planner, worker, and local review tasks run on situation-appropriate models.
 
 ## When to activate
 
@@ -15,6 +15,7 @@ Activate when the user:
 - asks to review with another model
 - asks to write development specs with Codex, Opus, Claude, or another model
 - asks to choose or record the model used for actual implementation
+- asks to split work across subagents or automatically choose models for delegated tasks
 - wants a second opinion from Codex, Gemini, Claude, or another CLI model
 - mentions Spec Kit artifacts in a review context
 - gives detailed model specs such as `codex-5.5:xhigh@normal`, `opus-4.7:1m@max`, `sonnet-4.6@high`, or `codex-5.5:high@priority`
@@ -35,6 +36,9 @@ spec.md   plan.md   tasks.md
     \        |       /
  user runs the IMPLEMENTATION model
              |
+     optional subagent routing
+   scout / planner / worker / checker
+             |
             diff
              |
      +-------v--------+
@@ -50,11 +54,12 @@ spec.md   plan.md   tasks.md
  implementation model ingests findings
 ```
 
-The skill owns three directions:
+The skill owns four directions:
 
 1. **Spec handoff**: gather feature context into a prompt for the configured spec author model
-2. **Review export**: gather spec and git context into a compact review package
-3. **Review ingest**: parse the review report and drive remediation
+2. **Subagent routing**: record how implementation slices should choose scout, planner, worker, or local checker models
+3. **Review export**: gather spec and git context into a compact review package
+4. **Review ingest**: parse the review report and drive remediation
 
 ## Directory convention
 
@@ -69,6 +74,8 @@ The skill owns three directions:
     review-package.md
     review-report.md
     metadata.json
+.claude/agents/
+  mmr-*.md        # optional project-local overrides for plugin subagents
 ```
 
 Recommended `config.json` keys:
@@ -90,6 +97,14 @@ Recommended `config.json` keys:
 - `base_ref`
 - `spec_dir`
 - `package_profile`
+- `subagent_routing`
+
+Plugin-provided subagents:
+
+- `mmr-context-scout`: fast read-only exploration, default Claude Code model `haiku`
+- `mmr-implementation-worker`: scoped edits and tests, default Claude Code model `sonnet`
+- `mmr-heavy-planner`: cross-cutting or ambiguous planning, default Claude Code model `opus`
+- `mmr-review-checker`: local read-only preflight, default Claude Code model `sonnet`
 
 ## Detailed model specs
 
@@ -136,9 +151,32 @@ Model routing defaults:
 - `model_defaults.spec_heavy`: `opus-4.7:1m@max`.
 - `model_defaults.dev`: `sonnet-4.6@high` with `allow_silent_upgrade=false`.
 - `model_defaults.review`: `codex-5.5:high@normal`.
+- `model_defaults.subagent_fast`: `haiku-4.5@normal`.
 - Keep legacy fields updated from `model_defaults` for older commands and templates.
 - Keep `builder` as the execution surface, such as `claude-code`, and keep `implementation_model` as the actual model descriptor.
 - Keep `reviewer` separate from both implementation model and `review_model`.
+
+## Subagent auto-routing
+
+Use subagent routing when the user wants implementation work divided into task slices or when `subagent_routing.mode = "auto"` in `.cross-review/config.json`.
+
+Default role map:
+
+- scout -> `mmr-context-scout`, model key `subagent_fast`
+- worker -> `mmr-implementation-worker`, model key `dev`
+- heavy planner -> `mmr-heavy-planner`, model key `spec_heavy`
+- review checker -> `mmr-review-checker`, model key `review` only for Claude-compatible review models, otherwise `dev`
+
+Selection rules:
+
+- Choose `scout` for read-only codebase discovery, dependency mapping, and compact context summaries.
+- Choose `heavy planner` for cross-cutting design, migrations, security-sensitive changes, unclear requirements, and large Spec Kit decomposition.
+- Choose `worker` for scoped code and test edits after the task slice is clear.
+- Choose `review checker` for local read-only preflight after an implementation slice or before exporting a review package.
+
+When Claude Code can pass a per-invocation model to the Agent tool, use the resolved model for that subagent call. Otherwise, prefer project-local `.claude/agents/mmr-*.md` overrides generated by `/multi-model-review:cross-review init --subagents auto`; project agents override plugin agents.
+
+Do not write Codex, Gemini, or unknown provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports that custom model. Preserve those models in handoff metadata and use the existing CLI/package path.
 
 ## Spec handoff flow
 
@@ -158,6 +196,8 @@ Use `/multi-model-review:spec-handoff` before implementation when the user wants
 - If `implementation_options` is missing for a Claude implementation model, infer `{ "workload": "high", "allow_silent_upgrade": false }`.
 - If the user asks for Opus heavy mode, use `opus-4.7:1m@max` unless the user gives different model options.
 - Derive `spec_author_profile` from `spec_author_options` for human-readable output, for example `intelligence=very-high, reasoning=xhigh, speed=normal`.
+- Resolve `subagent_routing` from config. If absent, treat it as `off` unless the user explicitly asks for subagent splitting.
+- If subagent routing is enabled, include the role map and selection rules in `SUBAGENT_ROUTING`; do not invoke subagents while creating the spec handoff.
 
 ### 2. Gather spec inputs
 
@@ -175,6 +215,7 @@ The template must tell the spec author model to:
 - produce or update `spec.md`, `plan.md`, and `tasks.md`
 - optimize the artifacts for implementation by `implementation_model`
 - create token-conscious task slices suitable for Claude Sonnet 4.6 when that is the implementation model
+- add route hints to `tasks.md` such as `[route:scout]`, `[route:heavy-planner]`, `[route:worker]`, or `[route:review-checker]` when subagent routing is enabled
 - avoid implementing code
 - output file blocks with target paths
 
@@ -183,9 +224,9 @@ The template must tell the spec author model to:
 Write:
 
 - `spec-authoring-prompt.md`
-- `metadata.json` with the selected detailed spec model, spec author model/options/profile, selected detailed implementation model, implementation options, timestamp, slug, original arguments, and source notes
+- `metadata.json` with the selected detailed spec model, spec author model/options/profile, selected detailed implementation model, implementation options, resolved subagent routing, timestamp, slug, original arguments, and source notes
 
-Print the selected spec author model, implementation model, prompt path, and expected `spec-output.md` path.
+Print the selected spec author model, implementation model, subagent routing mode, prompt path, and expected `spec-output.md` path.
 
 ## Export flow
 
@@ -232,6 +273,7 @@ Create these placeholders:
 - `SPEC_AUTHOR_PROFILE`
 - `IMPLEMENTATION_MODEL`
 - `IMPLEMENTATION_OPTIONS`
+- `SUBAGENT_ROUTING`
 - `REVIEW_MODEL`
 - `REVIEW_OPTIONS`
 - `REVIEW_PROFILE`
@@ -275,7 +317,7 @@ The template must tell the reviewer to:
 Write:
 
 - `review-package.md`
-- `metadata.json` with base/head, roles, selected detailed review model, spec author model, spec author options, implementation model, implementation options, profile, and truncation notes
+- `metadata.json` with base/head, roles, selected detailed review model, spec author model, spec author options, implementation model, implementation options, subagent routing, profile, and truncation notes
 
 ### 7. Print the next command
 
@@ -315,6 +357,8 @@ Special handling:
 - Do not dump raw artifacts in compact mode just because they are available.
 - Preserve the reviewer's language when quoting findings back to the user.
 - Do not silently upgrade the configured implementation model. If `model_defaults.dev` says `sonnet-4.6@high`, keep that routing unless the user explicitly overrides it.
+- Automatic subagent routing may choose a different configured role model for a different kind of task, but record the selected role, agent, model key, and reason in metadata or the task plan.
+- Subagents should not spawn subagents. Keep orchestration in the main conversation or slash command.
 
 ## Related files
 
@@ -324,3 +368,7 @@ Special handling:
 - `commands/apply-review.md`
 - `templates/spec-authoring-prompt.md`
 - `templates/review-report.md`
+- `agents/mmr-context-scout.md`
+- `agents/mmr-implementation-worker.md`
+- `agents/mmr-heavy-planner.md`
+- `agents/mmr-review-checker.md`

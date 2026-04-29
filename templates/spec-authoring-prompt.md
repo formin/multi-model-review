@@ -11,8 +11,18 @@ This file is self-contained. Do not rely on prior conversation state.
 - spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
 - implementation model: `{{IMPLEMENTATION_MODEL}}`
 - implementation options: `{{IMPLEMENTATION_OPTIONS}}`
+- subagent routing: `{{SUBAGENT_ROUTING}}`
 
 Write the development artifacts so the implementation model can execute them efficiently. Respect the implementation options when sizing tasks. When the implementation model is `claude-sonnet-4.6`, prefer clear task slices, explicit acceptance checks, and minimal ambiguity so implementation can stay token-conscious.
+
+If subagent routing is enabled, write `tasks.md` so the builder can delegate safely:
+
+- `route:scout` for read-only discovery, dependency mapping, and context summaries
+- `route:heavy-planner` for cross-cutting design, migration, security-sensitive, or ambiguous work before edits
+- `route:worker` for scoped implementation and test edits
+- `route:review-checker` for read-only local preflight after an implementation slice
+
+Use only route hints. Do not invent model IDs outside the routing contract.
 
 ## 2. Feature
 
@@ -76,5 +86,6 @@ Return the output as file blocks with exact target paths:
 - Identify non-goals and edge cases.
 - Include implementation risks and integration points in `plan.md`.
 - Break `tasks.md` into small, ordered tasks that `{{IMPLEMENTATION_MODEL}}` can perform in focused passes.
+- When subagent routing is enabled, include a route hint on each implementation task, for example `[route:worker]`, `[route:scout]`, `[route:heavy-planner]`, or `[route:review-checker]`.
 - Mark any unresolved product or technical questions clearly.
 - Avoid broad rewrites outside the requested feature.

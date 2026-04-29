@@ -50,6 +50,8 @@ Recommended defaults:
 - heavy spec author -> `opus-4.7:1m@max`
 - implementation -> `sonnet-4.6@high` with silent upgrade disabled
 - review -> `codex-5.5:high@normal`
+- fast subagent scout -> `haiku-4.5@normal`
+- subagent routing -> `auto` with `balanced` policy
 - `codex-mcp` -> `micro`
 - `codex-auto` -> `compact`
 - `codex-cli` -> `compact`
@@ -71,9 +73,17 @@ For development itself, use a separate spec-authoring handoff before implementat
 1. create `spec-authoring-prompt.md` with `/multi-model-review:spec-handoff`
 2. run `codex-5.5:xhigh@normal`, or use `--heavy` for `opus-4.7:1m@max`
 3. apply the returned `spec.md`, `plan.md`, and `tasks.md`
-4. implement with `sonnet-4.6@high` unless the user explicitly overrides the dev model
+4. use route hints such as `[route:scout]`, `[route:heavy-planner]`, `[route:worker]`, and `[route:review-checker]` when task slices should be delegated
+5. implement with `sonnet-4.6@high` unless the user explicitly overrides the dev model
 
 This keeps the expensive reasoning pass focused on durable artifacts and keeps the implementation pass bounded by small, explicit tasks.
+
+Subagent routing is also a token-efficiency tool:
+
+- `mmr-context-scout` keeps broad exploration out of the main context
+- `mmr-heavy-planner` spends the high-reasoning budget only on ambiguous or cross-cutting design
+- `mmr-implementation-worker` receives scoped tasks instead of the whole project history
+- `mmr-review-checker` does local preflight before a compact external review package is exported
 
 ## What stays in compact mode
 

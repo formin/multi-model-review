@@ -11,6 +11,7 @@ You are on `feat/magic-link-auth`.
 - heavy spec default: `opus-4.7:1m@max`
 - implementation default: `sonnet-4.6@high`
 - review default: `codex-5.5:high@normal`
+- subagent routing: `auto`, policy `balanced`
 - reviewer surface: Codex CLI
 - base ref: `main`
 - package profile: `compact`
@@ -23,7 +24,7 @@ You are on `feat/magic-link-auth`.
 | 1 | Claude | `/multi-model-review:cross-review init` | `.cross-review/config.json` |
 | 2 | Claude | `/multi-model-review:spec-handoff` | `spec-authoring-prompt.md`, `metadata.json` |
 | 3 | terminal | run Codex 5.5 on the spec handoff | `spec-output.md` |
-| 4 | Claude Sonnet 4.6 | implement and commit | source changes |
+| 4 | Claude Sonnet 4.6 + plugin subagents | implement routed task slices and commit | source changes |
 | 5 | Claude | `/multi-model-review:review-package` | `review-package.md`, `metadata.json` |
 | 6 | terminal | `codex exec -m codex-5.5 --file ... > review-report.md` | `review-report.md` |
 | 7 | Claude | `/multi-model-review:apply-review` | fixes + `review-state.json` |
@@ -36,7 +37,8 @@ You are on `feat/magic-link-auth`.
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
-  --review codex-5.5:high@normal
+  --review codex-5.5:high@normal \
+  --subagents auto
 ```
 
 Answers:
@@ -46,6 +48,7 @@ Answers:
 - heavy spec default: `opus-4.7:1m@max`
 - implementation default: `sonnet-4.6@high`
 - review default: `codex-5.5:high@normal`
+- subagent routing: `auto`
 - reviewer: `codex-cli`
 - base ref: `main`
 - package profile: `compact`
@@ -77,6 +80,17 @@ Implementation options:
 ```
 
 Run Codex 5.5 against the prompt and review the returned `spec.md`, `plan.md`, and `tasks.md` file blocks before applying them.
+
+If subagent routing is enabled, `tasks.md` may include route hints:
+
+```markdown
+- [ ] T001 [route:scout] Map current auth routes, token storage, and rate-limit middleware.
+- [ ] T002 [route:heavy-planner] Design the magic-link verification path and replay-prevention boundary.
+- [ ] T003 [route:worker] Implement token issuance, verification, and focused tests.
+- [ ] T004 [route:review-checker] Run a local read-only preflight against the spec and touched files.
+```
+
+Claude Code can then pick the matching plugin subagent. Scout runs on the fast model, planning uses the heavy model, implementation uses the configured dev model, and local preflight stays separate from the external Codex review.
 
 ## 3. Export the review package
 
@@ -148,7 +162,7 @@ Because the context was `limited-but-actionable`, Claude can proceed without re-
 /multi-model-review:apply-review
 ```
 
-Claude presents a checklist, reads the cited files, proposes targeted edits, and applies them one at a time after confirmation.
+Claude presents a checklist, reads the cited files, proposes targeted edits, and applies them one at a time after confirmation. With subagent routing enabled, path-local fixes can go to `mmr-implementation-worker`, while a small local preflight can go to `mmr-review-checker` before the external re-review.
 
 ## 6. What happens if compact was not enough?
 

@@ -1,5 +1,5 @@
 ---
-description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, and review model metadata.
+description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, subagent routing, and review model metadata.
 argument-hint: [slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>]
 allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*)]
 ---
@@ -57,15 +57,17 @@ Review model guidance:
 
 1. Load `.cross-review/config.json`.
    - If missing, abort with: "Run `/multi-model-review:cross-review init` first."
-   - Read `model_defaults`, `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, `implementation_options`, optional `review_model`, and optional `review_options`.
+   - Read `model_defaults`, `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, `implementation_options`, optional `review_model`, optional `review_options`, and optional `subagent_routing`.
    - If model routing keys are missing, use:
      - `spec = codex-5.5:xhigh@normal`
      - `spec_heavy = opus-4.7:1m@max`
      - `dev = sonnet-4.6@high`
      - `review = codex-5.5:high@normal`
+     - `subagent_fast = haiku-4.5@normal` when subagent routing is enabled
    - If the selected spec author model is `opus-4.7`, `claude-opus-4.7`, or `claude-opus-4.7-1m` and options are missing, use `spec_author_options = { "context": "1M", "workload": "max" }`.
    - If the selected implementation model is a Claude model and options are missing, use `implementation_options = { "workload": "high", "allow_silent_upgrade": false }`.
    - Derive `spec_author_profile` from `spec_author_options` when the profile string is missing.
+   - If `subagent_routing` is missing, infer `mode = off` and add a package note that no subagent routing was recorded.
    - Include a package note that defaults were inferred from missing config.
 
 2. Resolve the review model.
@@ -125,6 +127,7 @@ Review model guidance:
    - `{{SPEC_AUTHOR_PROFILE}}`
    - `{{IMPLEMENTATION_MODEL}}`
    - `{{IMPLEMENTATION_OPTIONS}}`
+   - `{{SUBAGENT_ROUTING}}`
    - `{{REVIEW_MODEL}}`
    - `{{REVIEW_OPTIONS}}`
    - `{{REVIEW_PROFILE}}`
@@ -164,11 +167,11 @@ Review model guidance:
 
 10. Render the template.
    - Substitute all package metadata, brief, appendix, and path placeholders.
-   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, `{{REPORT_PATH}}`, `{{SPEC_AUTHOR_MODEL}}`, `{{SPEC_AUTHOR_OPTIONS}}`, `{{SPEC_AUTHOR_PROFILE}}`, `{{IMPLEMENTATION_MODEL}}`, `{{IMPLEMENTATION_OPTIONS}}`, `{{REVIEW_MODEL}}`, `{{REVIEW_OPTIONS}}`, and `{{REVIEW_PROFILE}}`.
+   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, `{{REPORT_PATH}}`, `{{SPEC_AUTHOR_MODEL}}`, `{{SPEC_AUTHOR_OPTIONS}}`, `{{SPEC_AUTHOR_PROFILE}}`, `{{IMPLEMENTATION_MODEL}}`, `{{IMPLEMENTATION_OPTIONS}}`, `{{SUBAGENT_ROUTING}}`, `{{REVIEW_MODEL}}`, `{{REVIEW_OPTIONS}}`, and `{{REVIEW_PROFILE}}`.
 
 11. Write outputs under `.cross-review/packages/<YYYYMMDD-HHMM>-<slug>/`.
    - `review-package.md`
-   - `metadata.json` with base, head, builder, reviewer, selected detailed review model, spec author model/options/profile, implementation model/options, timestamp, slug, review scope ID, package profile, original arguments, and truncation notes
+   - `metadata.json` with base, head, builder, reviewer, selected detailed review model, spec author model/options/profile, implementation model/options, subagent routing, timestamp, slug, review scope ID, package profile, original arguments, and truncation notes
 
 12. Print the next step.
    - Show the package path.

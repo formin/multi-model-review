@@ -17,6 +17,8 @@ Recommended model routing:
 | heavy spec author | `opus-4.7:1m@max` |
 | actual development implementation | `sonnet-4.6@high` |
 | review | `codex-5.5:high@normal` |
+| fast subagent scout | `haiku-4.5@normal` |
+| subagent routing | `auto` |
 
 Detailed model specs use:
 
@@ -43,6 +45,15 @@ Supported reviewer examples:
 - Gemini CLI
 - another Claude session
 
+Subagent routing is optional but recommended when implementation work will be split:
+
+| Route | Agent | Default model | Use for |
+|-------|-------|---------------|---------|
+| `scout` | `mmr-context-scout` | `haiku` | read-only discovery and summaries |
+| `heavy-planner` | `mmr-heavy-planner` | `opus` | cross-cutting design, migrations, security-sensitive plans |
+| `worker` | `mmr-implementation-worker` | `sonnet` | scoped implementation and tests |
+| `review-checker` | `mmr-review-checker` | `sonnet` | local read-only preflight |
+
 ## 2. Initialize the workflow
 
 Inside the target repo:
@@ -52,13 +63,14 @@ Inside the target repo:
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
-  --review codex-5.5:high@normal
+  --review codex-5.5:high@normal \
+  --subagents auto
 ```
 
 Equivalent update form:
 
 ```text
-/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal
+/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
 ```
 
 Typical stored values:
@@ -70,6 +82,7 @@ Typical stored values:
 | heavy spec default | `opus-4.7:1m@max` |
 | implementation default | `sonnet-4.6@high` |
 | review default | `codex-5.5:high@normal` |
+| subagent routing | `auto`, policy `balanced` |
 | reviewer | `codex-auto` |
 | base ref | `main` |
 | package profile | `compact` |
@@ -108,6 +121,12 @@ Example config:
       "model": "codex-5.5",
       "reasoning": "high",
       "speed": "normal"
+    },
+    "subagent_fast": {
+      "raw": "haiku-4.5@normal",
+      "provider": "claude",
+      "model": "claude-haiku-4.5",
+      "workload": "normal"
     }
   },
   "spec_author_model": "codex-5.5",
@@ -130,7 +149,17 @@ Example config:
   "reviewer": "codex-auto",
   "base_ref": "main",
   "spec_dir": "specs/001-auth-rework",
-  "package_profile": "compact"
+  "package_profile": "compact",
+  "subagent_routing": {
+    "mode": "auto",
+    "policy": "balanced",
+    "agents": {
+      "scout": { "agent": "mmr-context-scout", "model_key": "subagent_fast", "claude_code_model": "haiku" },
+      "worker": { "agent": "mmr-implementation-worker", "model_key": "dev", "claude_code_model": "sonnet" },
+      "heavy_planner": { "agent": "mmr-heavy-planner", "model_key": "spec_heavy", "claude_code_model": "opus[1m]" },
+      "review_checker": { "agent": "mmr-review-checker", "model_key": "dev", "claude_code_model": "sonnet" }
+    }
+  }
 }
 ```
 
@@ -174,6 +203,15 @@ Implement the feature however you normally work:
 Use the configured `implementation_model` and `implementation_options` for the token-heavy implementation pass. The default is `sonnet-4.6@high`, stored as `claude-sonnet-4.6` with `workload=high`.
 
 The default implementation routing disables silent upgrade. If the configured dev model is `sonnet-4.6@high`, do not silently switch to Opus or a higher workload just because the task looks hard.
+
+When subagent routing is enabled, let the route hints in `tasks.md` guide delegation:
+
+- `[route:scout]` -> use `mmr-context-scout`
+- `[route:heavy-planner]` -> use `mmr-heavy-planner`
+- `[route:worker]` -> use `mmr-implementation-worker`
+- `[route:review-checker]` -> use `mmr-review-checker`
+
+If a configured role model is not usable as a Claude Code subagent model, keep that model in the handoff or CLI review path and use the recorded fallback for the local subagent.
 
 Commit the branch when possible. The reviewer can inspect uncommitted changes in the diff, but the commit trail is more useful when commits exist.
 
@@ -252,6 +290,7 @@ Optional:
 ```text
 /multi-model-review:apply-review --min-confidence 85
 /multi-model-review:apply-review .cross-review/packages/20260421-1400-auth-rework
+/multi-model-review:apply-review --subagents auto
 ```
 
 Default behavior:
@@ -261,6 +300,7 @@ Default behavior:
 3. drop findings with confidence below 70
 4. present a checklist
 5. apply accepted findings one at a time
+6. when subagent routing is enabled, use the implementation worker and local review checker for accepted path-local fixes
 
 ## 9. When to rerun with `--full`
 

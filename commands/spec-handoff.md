@@ -1,6 +1,6 @@
 ---
-description: Export a spec-authoring handoff prompt for the configured development spec model and model-specific options.
-argument-hint: [slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]
+description: Export a spec-authoring handoff prompt for the configured development spec model, model-specific options, and optional subagent task routing.
+argument-hint: [slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]
 allowed-tools: [Read, Write, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git diff --stat:*)]
 ---
 
@@ -20,6 +20,7 @@ If config is missing or incomplete, use these defaults and tell the user to run
 - `spec = codex-5.5:xhigh@normal`
 - `spec_heavy = opus-4.7:1m@max`
 - `dev = sonnet-4.6@high`
+- `subagent_fast = haiku-4.5@normal` when subagents are enabled
 
 The legacy fields are still supported:
 
@@ -29,6 +30,8 @@ The legacy fields are still supported:
 - `implementation_model`
 - `implementation_options`
 
+If `subagent_routing.mode = "auto"`, include the resolved subagent routing contract in the handoff so the spec author can produce task slices with route hints. If the user passes `--subagents off`, omit route hints for this handoff only.
+
 ## Model spec options
 
 Preferred detailed options:
@@ -36,6 +39,7 @@ Preferred detailed options:
 - `--spec-model <model[:axis]@axis>` overrides `model_defaults.spec` for this handoff.
 - `--heavy` selects `model_defaults.spec_heavy` for this handoff.
 - `--plan` keeps the same handoff command but emphasizes `plan.md` and `tasks.md` output for implementation handoff planning.
+- `--subagents auto|off` overrides `config.subagent_routing.mode` for this handoff only.
 - `--dev-model <model[:axis]@axis>` may be accepted as an alias for `--implementation-model` when the user gives the new detailed syntax.
 
 Compatibility options:
@@ -91,6 +95,14 @@ wins and the command should mention that `--heavy` was ignored.
    - If the implementation model is a Claude model, default implementation options to `{ "workload": "high", "allow_silent_upgrade": false }`.
    - Apply each `--implementation-option <key=value>` override after defaults and config.
    - Never infer a stronger implementation model because the spec looks large. Ask for an explicit override instead.
+   - Resolve subagent routing from `config.subagent_routing`.
+   - If `--subagents auto|off` is present, apply it for this handoff only.
+   - If subagent routing is enabled but missing, infer the default role map:
+     - scout -> `mmr-context-scout`, `model_defaults.subagent_fast` or `haiku-4.5@normal`
+     - worker -> `mmr-implementation-worker`, `model_defaults.dev`
+     - heavy planner -> `mmr-heavy-planner`, `model_defaults.spec_heavy`
+     - review checker -> `mmr-review-checker`, Claude-compatible `model_defaults.review` or `model_defaults.dev`
+   - Keep subagent routing descriptive in the prompt; do not run subagents during spec handoff generation.
 
 3. Resolve the feature slug or brief.
    - If the first positional value matches `specs/<slug>/` or a directory under `specs/`, treat it as the feature slug.
@@ -118,6 +130,7 @@ wins and the command should mention that `--heavy` was ignored.
      - `{{SPEC_AUTHOR_PROFILE}}`
      - `{{IMPLEMENTATION_MODEL}}`
      - `{{IMPLEMENTATION_OPTIONS}}`
+     - `{{SUBAGENT_ROUTING}}`
      - `{{FEATURE_SLUG}}`
      - `{{FEATURE_BRIEF}}`
      - `{{PROJECT_CONTEXT}}`
@@ -129,18 +142,19 @@ wins and the command should mention that `--heavy` was ignored.
      - non-goals
      - implementation risks
      - task IDs that can be implemented independently
-     - assigning implementation tasks to the resolved dev model
+     - assigning implementation tasks to the resolved dev model and resolved subagent route
      - no production code edits
 
 7. Write outputs under `.cross-review/spec-handoffs/<YYYYMMDD-HHMM>-<slug>/`.
    - `spec-authoring-prompt.md`
-   - `metadata.json` with timestamp, slug, handoff type (`spec` or `plan`), selected detailed spec model, selected detailed implementation model, legacy spec author model/options/profile, legacy implementation model/options, original arguments, and source notes
+   - `metadata.json` with timestamp, slug, handoff type (`spec` or `plan`), selected detailed spec model, selected detailed implementation model, resolved subagent routing, legacy spec author model/options/profile, legacy implementation model/options, original arguments, and source notes
 
 8. Print the next step.
    - Show the prompt path.
    - Show the selected spec model raw string and structured options.
    - Show the derived profile string.
    - Show the selected implementation model raw string and structured options.
+   - Show whether subagent routing is `auto` or `off`; when enabled, print the role-to-agent/model table.
    - Remind the user to write the model output to `spec-output.md`.
    - Print a command hint only when the local CLI is obvious:
      - `codex-5.5`: `codex exec -m codex-5.5 - < .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md > .cross-review/spec-handoffs/<pkg>/spec-output.md`

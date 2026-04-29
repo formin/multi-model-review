@@ -17,6 +17,7 @@ This file is self-contained. Do not rely on prior conversation state.
 - spec author profile: `{{SPEC_AUTHOR_PROFILE}}`
 - implementation model: `{{IMPLEMENTATION_MODEL}}`
 - implementation options: `{{IMPLEMENTATION_OPTIONS}}`
+- subagent routing: `{{SUBAGENT_ROUTING}}`
 - review model: `{{REVIEW_MODEL}}`
 - review options: `{{REVIEW_OPTIONS}}`
 - review profile: `{{REVIEW_PROFILE}}`
@@ -104,7 +105,8 @@ Produce a review report that follows this schema exactly:
 2. Rules adherence
 3. Highest-risk correctness issues
 4. Security issues
-5. Context sufficiency
+5. Subagent route fit when routing metadata is present
+6. Context sufficiency
 
 ## What not to flag
 

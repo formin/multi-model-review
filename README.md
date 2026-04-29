@@ -6,6 +6,38 @@ Write specs with one model, implement with another, and review with a different 
 
 The spec author or reviewer does not need to share your current session. Each handoff lives on disk as markdown, and you run the other model yourself.
 
+## Quick usage
+
+Install the plugin in Claude Code, then initialize model routing in the target repository:
+
+```text
+/plugin install multi-model-review@multi-model-review
+/multi-model-review:cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
+```
+
+Create or refine Spec Kit artifacts, implement the generated tasks, and export a compact review package:
+
+```text
+/multi-model-review:spec-handoff 001-auth-rework --plan
+/speckit.implement
+/multi-model-review:review-package 001-auth-rework
+```
+
+When subagent routing is enabled, tasks can include route hints so Claude Code chooses the right specialist and model automatically:
+
+```markdown
+- [ ] T001 [route:scout] Map the affected files and project rules.
+- [ ] T002 [route:heavy-planner] Plan the cross-cutting API and migration changes.
+- [ ] T003 [route:worker] Implement the scoped code and tests.
+- [ ] T004 [route:review-checker] Run a local read-only preflight before external review.
+```
+
+Run the reviewer yourself, save `review-report.md`, then ingest accepted findings:
+
+```text
+/multi-model-review:apply-review
+```
+
 ## Why multi-model?
 
 A model reviewing its own output often rationalizes. A different model brings:
@@ -37,8 +69,10 @@ Spec Kit is excellent at the single-agent flow:
 | Heavy spec authoring | `opus-4.7:1m@max` | Large audits and 1M-context passes |
 | Implementation | `sonnet-4.6@high` | Token-heavy development work, no silent upgrade |
 | Review | `codex-5.5:high@normal` | Cost-aware cross-review |
+| Fast subagent scout | `haiku-4.5@normal` | Read-only discovery and context summaries |
+| Subagent routing | `auto` | Choose scout, planner, worker, or checker by task situation |
 
-The routing is stored in `.cross-review/config.json`, so the skill can keep the spec-writing model, heavy-spec model, implementation model, and review model distinct throughout packaging and review.
+The routing is stored in `.cross-review/config.json`, so the skill can keep the spec-writing model, heavy-spec model, implementation model, subagent role models, and review model distinct throughout packaging and review.
 
 Detailed model specs use:
 
@@ -105,6 +139,19 @@ UI option mapping:
 | Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
 | Claude context | `context` | `standard`, `1M` |
 | Claude workload | `workload` | `low`, `normal`, `high`, `max` |
+
+## Automatic subagent routing
+
+The plugin ships Claude Code subagents in `agents/` and can record a routing policy in `.cross-review/config.json`.
+
+| Subagent | Default model | Use for |
+|----------|---------------|---------|
+| `mmr-context-scout` | `haiku` | fast read-only discovery, dependency mapping, task context |
+| `mmr-heavy-planner` | `opus` | cross-cutting plans, migrations, ambiguous or security-sensitive work |
+| `mmr-implementation-worker` | `sonnet` | scoped implementation and tests |
+| `mmr-review-checker` | `sonnet` | local read-only preflight before external review |
+
+When `subagent_routing.mode` is `auto`, tasks can be tagged with route hints such as `[route:scout]`, `[route:heavy-planner]`, `[route:worker]`, or `[route:review-checker]`. The main builder chooses the matching subagent and the configured role model. If Claude Code cannot use a configured non-Claude model in subagent frontmatter, the model stays in the markdown handoff or CLI review path instead of being silently substituted.
 
 ## Compact-first packaging
 
@@ -190,13 +237,14 @@ Inside your project:
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
-  --review codex-5.5:high@normal
+  --review codex-5.5:high@normal \
+  --subagents auto
 ```
 
 This writes `.cross-review/config.json`. The same settings can be changed later with:
 
 ```text
-/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal
+/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
 ```
 
 Create a spec-authoring handoff when you want the configured spec model to write or refine the development artifacts:
@@ -217,7 +265,7 @@ Then implement your feature as usual and package it:
 /multi-model-review:review-package --review-model codex-5.5:high@normal
 ```
 
-Implementation still happens through your normal builder flow, such as `/speckit.implement` or direct edits. `multi-model-review` records the configured dev model and refuses silent upgrade in the handoff metadata; it does not add a separate implement slash command.
+Implementation still happens through your normal builder flow, such as `/speckit.implement` or direct edits. When subagent routing is enabled, the generated tasks can carry route hints so Claude Code can delegate scout, planner, worker, and local checker slices to the matching plugin subagent. `multi-model-review` records the configured dev model and refuses silent upgrade in the handoff metadata; it does not add a separate implement slash command.
 
 The plugin writes:
 
@@ -261,7 +309,8 @@ Set project defaults with both model axes:
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
-  --review codex-5.5:high@normal
+  --review codex-5.5:high@normal \
+  --subagents auto
 ```
 
 Write a spec from the user's feature brief with high intelligence and normal speed:
@@ -339,6 +388,12 @@ Use this when you want Codex to spend the deep reasoning budget on durable Spec 
       "model": "codex-5.5",
       "reasoning": "high",
       "speed": "normal"
+    },
+    "subagent_fast": {
+      "raw": "haiku-4.5@normal",
+      "provider": "claude",
+      "model": "claude-haiku-4.5",
+      "workload": "normal"
     }
   },
   "spec_author_model": "codex-5.5",
@@ -360,7 +415,17 @@ Use this when you want Codex to spend the deep reasoning budget on durable Spec 
   },
   "reviewer": "codex-auto",
   "base_ref": "main",
-  "package_profile": "compact"
+  "package_profile": "compact",
+  "subagent_routing": {
+    "mode": "auto",
+    "policy": "balanced",
+    "agents": {
+      "scout": { "agent": "mmr-context-scout", "model_key": "subagent_fast", "claude_code_model": "haiku" },
+      "worker": { "agent": "mmr-implementation-worker", "model_key": "dev", "claude_code_model": "sonnet" },
+      "heavy_planner": { "agent": "mmr-heavy-planner", "model_key": "spec_heavy", "claude_code_model": "opus[1m]" },
+      "review_checker": { "agent": "mmr-review-checker", "model_key": "dev", "claude_code_model": "sonnet" }
+    }
+  }
 }
 ```
 
@@ -399,6 +464,12 @@ Equivalent config:
       "model": "claude-sonnet-4.6",
       "workload": "high",
       "allow_silent_upgrade": false
+    },
+    "subagent_fast": {
+      "raw": "haiku-4.5@normal",
+      "provider": "claude",
+      "model": "claude-haiku-4.5",
+      "workload": "normal"
     }
   },
   "spec_heavy_model": "claude-opus-4.7",
@@ -413,7 +484,11 @@ Equivalent config:
   },
   "reviewer": "codex-auto",
   "base_ref": "main",
-  "package_profile": "compact"
+  "package_profile": "compact",
+  "subagent_routing": {
+    "mode": "auto",
+    "policy": "balanced"
+  }
 }
 ```
 
@@ -421,10 +496,10 @@ Equivalent config:
 
 | Command | Purpose |
 |---------|---------|
-| `/multi-model-review:cross-review [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>]` | configure model routing, roles, and defaults |
-| `/multi-model-review:spec-handoff [slug|brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec or plan handoff |
+| `/multi-model-review:cross-review [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto\|off] [--subagent-policy conservative\|balanced\|specialist]` | configure model routing, subagent roles, and defaults |
+| `/multi-model-review:spec-handoff [slug|brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto\|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec or plan handoff |
 | `/multi-model-review:review-package [slug|task-id] [--review-model <model[:axis]@axis>] [--base <ref>] [--full] [--micro] [--paths <glob,...>]` | export the reviewer handoff |
-| `/multi-model-review:apply-review [path] [--min-confidence N]` | ingest the report and apply fixes |
+| `/multi-model-review:apply-review [path] [--min-confidence N] [--subagents auto\|off]` | ingest the report and apply fixes |
 
 ## Review report contract
 
@@ -441,7 +516,7 @@ That extra `Context sufficiency` field is what makes compact-first safe: the rev
 
 ## Design choices
 
-- **No side calls.** You run the reviewer yourself.
+- **No hidden external side calls.** You run external reviewers yourself; Claude Code subagents are local, explicit task delegates.
 - **Markdown interchange only.** Packages and reports are plain files.
 - **Compact-first.** Small default package, full package on demand.
 - **Confidence-gated.** Findings below 70 are hidden by default.
