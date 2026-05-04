@@ -1,10 +1,14 @@
 ---
 description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, subagent routing, and review model metadata.
-argument-hint: [slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>]
+argument-hint: "[slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>]"
 allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*)]
 ---
 
-# /multi-model-review:review-package
+# speckit.multi-model-review.review-package
+
+Spec Kit extension command: `/speckit.multi-model-review.review-package`
+
+Legacy Claude plugin command: `/multi-model-review:review-package`
 
 Build a self-contained `review-package.md` file for the reviewer model.
 

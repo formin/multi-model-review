@@ -1,10 +1,14 @@
 ---
 description: Export a spec-authoring handoff prompt for the configured development spec model, model-specific options, and optional subagent task routing.
-argument-hint: [slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]
+argument-hint: "[slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]"
 allowed-tools: [Read, Write, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git diff --stat:*)]
 ---
 
-# /multi-model-review:spec-handoff
+# speckit.multi-model-review.spec-handoff
+
+Spec Kit extension command: `/speckit.multi-model-review.spec-handoff`
+
+Legacy Claude plugin command: `/multi-model-review:spec-handoff`
 
 Build a self-contained `spec-authoring-prompt.md` file for the model that will create or refine Spec Kit development artifacts.
 

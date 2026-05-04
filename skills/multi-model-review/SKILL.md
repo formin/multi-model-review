@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, and review, exporting a cross-model code review package, or invoking /multi-model-review:cross-review, /multi-model-review:spec-handoff, /multi-model-review:review-package, or /multi-model-review:apply-review. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
 license: MIT
 ---
 
@@ -19,7 +19,7 @@ Activate when the user:
 - wants a second opinion from Codex, Gemini, Claude, or another CLI model
 - mentions Spec Kit artifacts in a review context
 - gives detailed model specs such as `codex-5.5:xhigh@normal`, `opus-4.7:1m@max`, `sonnet-4.6@high`, or `codex-5.5:high@priority`
-- invokes `/multi-model-review:cross-review`, `/multi-model-review:spec-handoff`, `/multi-model-review:review-package`, or `/multi-model-review:apply-review`
+- invokes `/speckit.multi-model-review.cross-review`, `/speckit.multi-model-review.spec-handoff`, `/speckit.multi-model-review.review-package`, `/speckit.multi-model-review.apply-review`, or the legacy `/multi-model-review:*` commands
 
 ## Mental model
 

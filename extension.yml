@@ -1,0 +1,49 @@
+schema_version: "1.0"
+
+extension:
+  id: "multi-model-review"
+  name: "Multi-Model Review"
+  version: "0.1.0"
+  description: "Cross-model Spec Kit handoffs for spec authoring, implementation routing, and review."
+  author: "formin"
+  repository: "https://github.com/formin/multi-model-review"
+  license: "MIT"
+  homepage: "https://github.com/formin/multi-model-review"
+
+requires:
+  speckit_version: ">=0.2.0"
+  tools:
+    - name: "git"
+      required: true
+    - name: "codex"
+      required: false
+    - name: "gemini"
+      required: false
+    - name: "claude"
+      required: false
+  commands:
+    - "speckit.plan"
+    - "speckit.tasks"
+    - "speckit.implement"
+
+provides:
+  commands:
+    - name: "speckit.multi-model-review.cross-review"
+      file: "commands/cross-review.md"
+      description: "Initialize or inspect cross-model Spec Kit workflow routing"
+    - name: "speckit.multi-model-review.spec-handoff"
+      file: "commands/spec-handoff.md"
+      description: "Export a spec-authoring or planning handoff for another model"
+    - name: "speckit.multi-model-review.review-package"
+      file: "commands/review-package.md"
+      description: "Create a compact multi-model review package from Spec Kit artifacts and git diff"
+    - name: "speckit.multi-model-review.apply-review"
+      file: "commands/apply-review.md"
+      description: "Ingest a reviewer report and guide accepted remediation"
+
+tags:
+  - "review"
+  - "workflow"
+  - "multi-model"
+  - "spec-driven-development"
+  - "code"

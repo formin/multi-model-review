@@ -7,7 +7,18 @@ Step-by-step walkthrough for `multi-model-review`.
 - Claude Code installed and authenticated
 - `git` on `PATH`
 - at least one reviewer model installed locally
-- Spec Kit is recommended, but not required
+- Spec Kit initialized with `specify init` when using the Spec Kit extension install path
+
+## Command names
+
+When installed through Spec Kit, use the `speckit.multi-model-review.*` command namespace:
+
+| Spec Kit command | Legacy Claude plugin command |
+|------------------|------------------------------|
+| `/speckit.multi-model-review.cross-review` | `/multi-model-review:cross-review` |
+| `/speckit.multi-model-review.spec-handoff` | `/multi-model-review:spec-handoff` |
+| `/speckit.multi-model-review.review-package` | `/multi-model-review:review-package` |
+| `/speckit.multi-model-review.apply-review` | `/multi-model-review:apply-review` |
 
 Recommended model routing:
 

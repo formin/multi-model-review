@@ -8,19 +8,19 @@ The spec author or reviewer does not need to share your current session. Each ha
 
 ## Quick usage
 
-Install the plugin in Claude Code, then initialize model routing in the target repository:
+Install as a Spec Kit extension, then initialize model routing in the target repository:
 
 ```text
-/plugin install multi-model-review@multi-model-review
-/multi-model-review:cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
+specify extension add --dev /path/to/multi-model-review
+/speckit.multi-model-review.cross-review init --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
 ```
 
 Create or refine Spec Kit artifacts, implement the generated tasks, and export a compact review package:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --plan
+/speckit.multi-model-review.spec-handoff 001-auth-rework --plan
 /speckit.implement
-/multi-model-review:review-package 001-auth-rework
+/speckit.multi-model-review.review-package 001-auth-rework
 ```
 
 When subagent routing is enabled, tasks can include route hints so Claude Code chooses the right specialist and model automatically:
@@ -35,8 +35,10 @@ When subagent routing is enabled, tasks can include route hints so Claude Code c
 Run the reviewer yourself, save `review-report.md`, then ingest accepted findings:
 
 ```text
-/multi-model-review:apply-review
+/speckit.multi-model-review.apply-review
 ```
+
+Claude Code plugin installs still expose the legacy command names such as `/multi-model-review:cross-review`.
 
 ## Why multi-model?
 
@@ -209,9 +211,35 @@ The `mcp__codex__codex` path is hard-limited to about 60 seconds, so non-trivial
   - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
   - another Claude session
   - any other CLI-capable LLM with a matching template
-- a Spec Kit project is recommended, but not required
+- a Spec Kit project initialized with `specify init` when installing through `specify extension`
 
 ## Install
+
+### Spec Kit Extension
+
+For local development:
+
+```bash
+specify extension add --dev /path/to/multi-model-review
+specify extension list
+```
+
+After a `v0.1.0` release is published, users can install directly from the release archive:
+
+```bash
+specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.0.zip
+```
+
+Registered Spec Kit command names:
+
+| Spec Kit command | Legacy Claude plugin command |
+|------------------|------------------------------|
+| `/speckit.multi-model-review.cross-review` | `/multi-model-review:cross-review` |
+| `/speckit.multi-model-review.spec-handoff` | `/multi-model-review:spec-handoff` |
+| `/speckit.multi-model-review.review-package` | `/multi-model-review:review-package` |
+| `/speckit.multi-model-review.apply-review` | `/multi-model-review:apply-review` |
+
+### Claude Code Plugin
 
 Inside a Claude Code session:
 
@@ -233,7 +261,7 @@ Then run `/reload-plugins` or restart Claude Code.
 Inside your project:
 
 ```text
-/multi-model-review:cross-review init \
+/speckit.multi-model-review.cross-review init \
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
@@ -244,25 +272,25 @@ Inside your project:
 This writes `.cross-review/config.json`. The same settings can be changed later with:
 
 ```text
-/multi-model-review:cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
+/speckit.multi-model-review.cross-review models set --spec codex-5.5:xhigh@normal --spec-heavy opus-4.7:1m@max --dev sonnet-4.6@high --review codex-5.5:high@normal --subagents auto
 ```
 
 Create a spec-authoring handoff when you want the configured spec model to write or refine the development artifacts:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
 ```
 
 For a plan-focused pass, keep the same command and add `--plan`:
 
 ```text
-/multi-model-review:spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
 ```
 
 Then implement your feature as usual and package it:
 
 ```text
-/multi-model-review:review-package --review-model codex-5.5:high@normal
+/speckit.multi-model-review.review-package --review-model codex-5.5:high@normal
 ```
 
 Implementation still happens through your normal builder flow, such as `/speckit.implement` or direct edits. When subagent routing is enabled, the generated tasks can carry route hints so Claude Code can delegate scout, planner, worker, and local checker slices to the matching plugin subagent. `multi-model-review` records the configured dev model and refuses silent upgrade in the handoff metadata; it does not add a separate implement slash command.
@@ -285,19 +313,19 @@ codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
 Then ingest the report:
 
 ```text
-/multi-model-review:apply-review
+/speckit.multi-model-review.apply-review
 ```
 
 If the reviewer reports `Context sufficiency: needs-full-package`, rerun:
 
 ```text
-/multi-model-review:review-package --full
+/speckit.multi-model-review.review-package --full
 ```
 
 Or scope it tighter:
 
 ```text
-/multi-model-review:review-package --paths src/auth,src/api
+/speckit.multi-model-review.review-package --paths src/auth,src/api
 ```
 
 ### Detailed option examples
@@ -305,7 +333,7 @@ Or scope it tighter:
 Set project defaults with both model axes:
 
 ```text
-/multi-model-review:cross-review init \
+/speckit.multi-model-review.cross-review init \
   --spec codex-5.5:xhigh@normal \
   --spec-heavy opus-4.7:1m@max \
   --dev sonnet-4.6@high \
@@ -316,19 +344,19 @@ Set project defaults with both model axes:
 Write a spec from the user's feature brief with high intelligence and normal speed:
 
 ```text
-/multi-model-review:spec-handoff "CSP v2 offerId alignment" --spec-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.spec-handoff "CSP v2 offerId alignment" --spec-model codex-5.5:xhigh@normal
 ```
 
 Use the heavy 1M-context spec default for a large audit:
 
 ```text
-/multi-model-review:spec-handoff "DOMAINAPI full SERVER_ADDR branch audit" --heavy
+/speckit.multi-model-review.spec-handoff "DOMAINAPI full SERVER_ADDR branch audit" --heavy
 ```
 
 Create a plan-focused handoff while preserving the configured implementation model:
 
 ```text
-/multi-model-review:spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.spec-handoff "CSP v2 offerId alignment" --plan --spec-model codex-5.5:xhigh@normal
 ```
 
 Implementation still runs through your normal builder flow, such as `/speckit.implement` or direct edits. The configured default is `sonnet-4.6@high`, and generated metadata records `allow_silent_upgrade=false` so the workflow does not quietly move implementation to a stronger model.
@@ -336,19 +364,19 @@ Implementation still runs through your normal builder flow, such as `/speckit.im
 Run cost-aware cross-review:
 
 ```text
-/multi-model-review:review-package C-12 --review-model codex-5.5:high@normal
+/speckit.multi-model-review.review-package C-12 --review-model codex-5.5:high@normal
 ```
 
 Escalate intelligence for a non-trivial design review:
 
 ```text
-/multi-model-review:review-package L-30 --review-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.review-package L-30 --review-model codex-5.5:xhigh@normal
 ```
 
 Use priority speed only when review turnaround is the bottleneck:
 
 ```text
-/multi-model-review:review-package L-50 --review-model codex-5.5:high@priority
+/speckit.multi-model-review.review-package L-50 --review-model codex-5.5:high@priority
 ```
 
 ## Basic usage examples
@@ -432,9 +460,9 @@ Use this when you want Codex to spend the deep reasoning budget on durable Spec 
 Then run:
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
-/multi-model-review:review-package 001-auth-rework --review-model codex-5.5:high@normal
-/multi-model-review:apply-review
+/speckit.multi-model-review.spec-handoff 001-auth-rework --spec-model codex-5.5:xhigh@normal
+/speckit.multi-model-review.review-package 001-auth-rework --review-model codex-5.5:high@normal
+/speckit.multi-model-review.apply-review
 ```
 
 ### Opus 4.7 1M writes specs, Claude Sonnet 4.6 implements
@@ -442,7 +470,7 @@ Then run:
 Use this when the spec pass needs the Claude 1M context option and max workload setting.
 
 ```text
-/multi-model-review:spec-handoff 001-auth-rework --heavy
+/speckit.multi-model-review.spec-handoff 001-auth-rework --heavy
 ```
 
 Equivalent config:
@@ -494,12 +522,12 @@ Equivalent config:
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/multi-model-review:cross-review [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto\|off] [--subagent-policy conservative\|balanced\|specialist]` | configure model routing, subagent roles, and defaults |
-| `/multi-model-review:spec-handoff [slug|brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto\|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]` | export the development spec or plan handoff |
-| `/multi-model-review:review-package [slug|task-id] [--review-model <model[:axis]@axis>] [--base <ref>] [--full] [--micro] [--paths <glob,...>]` | export the reviewer handoff |
-| `/multi-model-review:apply-review [path] [--min-confidence N] [--subagents auto\|off]` | ingest the report and apply fixes |
+| Spec Kit command | Legacy Claude plugin command | Purpose |
+|------------------|------------------------------|---------|
+| `/speckit.multi-model-review.cross-review [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto\|off] [--subagent-policy conservative\|balanced\|specialist]` | `/multi-model-review:cross-review` | configure model routing, subagent roles, and defaults |
+| `/speckit.multi-model-review.spec-handoff [slug|brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto\|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]` | `/multi-model-review:spec-handoff` | export the development spec or plan handoff |
+| `/speckit.multi-model-review.review-package [slug|task-id] [--review-model <model[:axis]@axis>] [--base <ref>] [--full] [--micro] [--paths <glob,...>]` | `/multi-model-review:review-package` | export the reviewer handoff |
+| `/speckit.multi-model-review.apply-review [path] [--min-confidence N] [--subagents auto\|off]` | `/multi-model-review:apply-review` | ingest the report and apply fixes |
 
 ## Review report contract
 

@@ -1,10 +1,14 @@
 ---
 description: Initialize config or show status for the multi-model-review workflow, including spec-author, heavy-spec, implementation, review, and subagent model routing.
-argument-hint: [init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto|off] [--subagent-policy conservative|balanced|specialist]
+argument-hint: "[init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto|off] [--subagent-policy conservative|balanced|specialist]"
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 ---
 
-# /multi-model-review:cross-review
+# speckit.multi-model-review.cross-review
+
+Spec Kit extension command: `/speckit.multi-model-review.cross-review`
+
+Legacy Claude plugin command: `/multi-model-review:cross-review`
 
 Configure or inspect the cross-agent Spec Kit workflow.
 

@@ -1,0 +1,21 @@
+# Files that should not be copied into .specify/extensions/multi-model-review.
+.git/
+.github/
+.claude/
+.claude-plugin/
+.cross-review/
+
+# Local editor and OS state.
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python/tooling caches.
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/

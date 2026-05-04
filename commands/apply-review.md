@@ -1,10 +1,14 @@
 ---
 description: Ingest the reviewer's review-report.md and drive remediation, optionally using configured subagent routing for accepted fixes.
-argument-hint: [package-dir] [--min-confidence <0-100>] [--subagents auto|off]
+argument-hint: "[package-dir] [--min-confidence <0-100>] [--subagents auto|off]"
 allowed-tools: [Read, Write, Edit, Glob, Grep, Agent, Bash(git diff:*), Bash(git log:*)]
 ---
 
-# /multi-model-review:apply-review
+# speckit.multi-model-review.apply-review
+
+Spec Kit extension command: `/speckit.multi-model-review.apply-review`
+
+Legacy Claude plugin command: `/multi-model-review:apply-review`
 
 Consume a reviewer agent's `review-report.md` and walk through the findings.
 
