@@ -6,7 +6,7 @@
 
 One of: `sufficient` | `limited-but-actionable` | `needs-full-package`
 
-Use `needs-full-package` when the compact package omitted or truncated context that blocks a trustworthy review.
+Use `needs-full-package` when the compact package omitted, compressed, or truncated context that blocks a trustworthy review and you cannot retrieve enough original context through available Headroom tools.
 
 ## Verdict
 

@@ -2,7 +2,7 @@
 
 `multi-model-review` sits on top of Spec Kit, but cross-model review has a different bottleneck than implementation: the reviewer pays for every token in the handoff package. The workflow also separates high-reasoning spec authoring from token-heavy implementation so each stage can use the most appropriate model.
 
-This document summarizes the token-efficiency changes added here and how they map to ideas from [rtk](https://github.com/rtk-ai/rtk).
+This document summarizes the token-efficiency changes added here and how they map to ideas from [rtk](https://github.com/rtk-ai/rtk) and [Headroom](https://github.com/chopratejas/headroom).
 
 ## Problem
 
@@ -34,6 +34,39 @@ RTK reduces shell-output tokens with four main moves:
 
 `multi-model-review` now applies the same pattern to review packages.
 
+## Headroom ideas applied here
+
+Headroom compresses tool outputs, logs, files, RAG chunks, and conversation context before they reach an LLM. Its useful ideas for `multi-model-review` are:
+
+- content-aware routing for JSON/tool output, logs, diffs, code, search results, and prose
+- structure preservation for identifiers, file paths, line numbers, signatures, errors, and acceptance criteria
+- CCR-style retrieval markers so compressed content can be expanded later when the same local Headroom store is available
+- compression stats so the package can report token savings and retrieval hints
+
+`multi-model-review` treats Headroom as optional. The default review package is still compact-first and self-contained enough for a reviewer to decide whether context is sufficient. When Headroom MCP tools are available, the package generator may compress large raw blocks that remain after manual filtering, grouping, truncation, and deduplication.
+
+Headroom modes:
+
+| Mode | Behavior |
+|------|----------|
+| `auto` | Use Headroom MCP compression when callable; otherwise continue with manual summaries |
+| `off` | Do not use Headroom |
+| `required` | Abort package generation if Headroom MCP compression is unavailable |
+
+Recommended config:
+
+```json
+{
+  "context_compression": {
+    "provider": "headroom",
+    "mode": "auto",
+    "min_tokens": 2000,
+    "use_mcp": true,
+    "require_retrieval_access": false
+  }
+}
+```
+
 ## Package profiles
 
 Three profiles are expected:
@@ -57,6 +90,7 @@ Recommended defaults:
 - `codex-cli` -> `compact`
 - `claude-code` reviewer -> `compact`
 - `gemini-cli` reviewer -> `compact`
+- Headroom context compression -> `auto`
 
 ## Compact-first workflow
 
@@ -96,6 +130,7 @@ Keep:
 - grouped file manifest
 - focused diff excerpts
 - explicit omission notes
+- Headroom compressed-block notes with retrieval hashes and query hints, when available
 
 Usually omit:
 
@@ -105,6 +140,18 @@ Usually omit:
 - snapshots
 - repeated boilerplate
 - appendices that do not change the review decision
+
+## Headroom package notes
+
+When Headroom is applied, `PACKAGE_NOTES` should list each compressed block:
+
+- source label, such as `git-diff`, `rules`, `tasks`, `log`, or `source-excerpt`
+- original and compressed token estimates when available
+- savings percentage and transforms when available
+- CCR hash when available
+- retrieval query hints, such as file path, symbol, task ID, or error text
+
+Do not rely on a transient CCR hash as the only copy of evidence that an external reviewer needs. If the reviewer cannot access the same local Headroom MCP/proxy store, the package should still contain enough manifest and focused excerpts for at least a `limited-but-actionable` review. Otherwise the reviewer should return `Context sufficiency: needs-full-package`.
 
 ## Why `Context sufficiency` matters
 
@@ -124,7 +171,18 @@ The plugin does not require RTK, but RTK can still help when available:
 - keep the same reduction mindset for shell output around the review loop
 - prefer compact-first inspection before falling back to raw output
 
+## Optional Headroom usage
+
+The plugin does not require Headroom. Use it only when the current host exposes Headroom MCP tools such as `headroom_compress`, `headroom_retrieve`, and `headroom_stats`.
+
+- Use `--headroom auto` for normal package generation.
+- Use `--headroom off` when the reviewer will not share the local retrieval store and the package must avoid retrieval markers.
+- Use `--headroom required` only when the workflow depends on Headroom MCP retrieval and should fail fast if it is unavailable.
+
+The Headroom CLI is useful for install and status checks such as `headroom --version` and `headroom mcp status`, but do not assume a direct CLI compression subcommand exists.
+
 ## References
 
 - [GitHub Spec Kit](https://github.com/github/spec-kit)
 - [rtk](https://github.com/rtk-ai/rtk)
+- [Headroom](https://github.com/chopratejas/headroom)

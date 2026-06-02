@@ -8,6 +8,7 @@ Step-by-step walkthrough for `multi-model-review`.
 - `git` on `PATH`
 - at least one reviewer model installed locally
 - Spec Kit initialized with `specify init` when using the Spec Kit extension install path
+- Optional: Headroom MCP tools when you want Headroom-aware package compression
 
 ## Command names
 
@@ -161,6 +162,12 @@ Example config:
   "base_ref": "main",
   "spec_dir": "specs/001-auth-rework",
   "package_profile": "compact",
+  "context_compression": {
+    "provider": "headroom",
+    "mode": "auto",
+    "min_tokens": 2000,
+    "use_mcp": true
+  },
   "subagent_routing": {
     "mode": "auto",
     "policy": "balanced",
@@ -241,6 +248,9 @@ Optional variants:
 /multi-model-review:review-package C-12 --review-model codex-5.5:high@normal
 /multi-model-review:review-package L-30 --review-model codex-5.5:xhigh@normal
 /multi-model-review:review-package L-50 --review-model codex-5.5:high@priority
+/multi-model-review:review-package --headroom auto
+/multi-model-review:review-package --headroom off
+/multi-model-review:review-package --headroom required
 ```
 
 What the command now does:
@@ -248,8 +258,9 @@ What the command now does:
 1. resolves the feature slug and base ref
 2. resolves the review model, including any `--review-model` override
 3. profiles the diff
-4. builds a compact package by default
-5. writes:
+4. resolves Headroom-aware compression mode
+5. builds a compact package by default
+6. writes:
 
 ```text
 .cross-review/packages/<YYYYMMDD-HHMM>-<slug>/
@@ -258,6 +269,8 @@ What the command now does:
 ```
 
 The compact package contains summaries, a diff manifest, focused excerpts, and omission notes. It does not dump every raw artifact by default.
+
+When Headroom MCP tools are callable, `--headroom auto` can compress large raw blocks left after manual reduction. The package records compression notes, retrieval hashes, and query hints in metadata. If the reviewer cannot access the same local Headroom store, keep the package independently reviewable or rerun with `--full`.
 
 ## 6. Run the reviewer yourself
 

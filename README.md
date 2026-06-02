@@ -23,6 +23,13 @@ Create or refine Spec Kit artifacts, implement the generated tasks, and export a
 /speckit.multi-model-review.review-package 001-auth-rework
 ```
 
+If Headroom MCP tools are available, the package command can compress oversized
+raw blocks while keeping retrieval notes in the package metadata:
+
+```text
+/speckit.multi-model-review.review-package 001-auth-rework --headroom auto
+```
+
 When subagent routing is enabled, tasks can include route hints so Claude Code chooses the right specialist and model automatically:
 
 ```markdown
@@ -178,7 +185,20 @@ Package profiles:
 | `compact` | default |
 | `full` | escalation pass when compact is insufficient |
 
-Details live in [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md).
+The package command can also use [Headroom](https://github.com/chopratejas/headroom)
+when Headroom MCP tools are available. Headroom is optional and runs after the
+normal compact reduction pass, so the package still includes a manifest,
+focused excerpts, and `Context sufficiency` guidance.
+
+Headroom modes:
+
+| Mode | Use case |
+|------|----------|
+| `auto` | default; compress large residual blocks when Headroom MCP tools are callable |
+| `off` | skip Headroom and use manual summaries only |
+| `required` | fail fast if Headroom MCP compression is unavailable |
+
+Details live in [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) and [docs/HEADROOM.md](docs/HEADROOM.md).
 
 ## Supported reviewers
 

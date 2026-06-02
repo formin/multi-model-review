@@ -23,6 +23,7 @@ This file is self-contained. Do not rely on prior conversation state.
 - review profile: `{{REVIEW_PROFILE}}`
 - changed files: `{{CHANGED_FILE_COUNT}}`
 - changed lines: `{{CHANGED_LINE_COUNT}}`
+- context compression: `{{CONTEXT_COMPRESSION}}`
 
 ## 2. Spec brief
 
@@ -72,6 +73,12 @@ Base: `{{BASE_REF}}`  Head: `{{HEAD_REF}}`
 
 {{PACKAGE_NOTES}}
 
+If the package includes Headroom CCR retrieval hashes and you have access to
+`headroom_retrieve`, use the recorded query hints only when the focused excerpts
+are insufficient. If retrieval is unavailable and the compressed block hides
+evidence needed for a trustworthy finding, return `Context sufficiency:
+needs-full-package`.
+
 ## Your task
 
 Produce a review report that follows this schema exactly:
@@ -106,7 +113,8 @@ Produce a review report that follows this schema exactly:
 3. Highest-risk correctness issues
 4. Security issues
 5. Subagent route fit when routing metadata is present
-6. Context sufficiency
+6. Headroom compressed context and retrieval needs when present
+7. Context sufficiency
 
 ## What not to flag
 

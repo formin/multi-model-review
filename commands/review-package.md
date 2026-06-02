@@ -1,7 +1,7 @@
 ---
-description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, subagent routing, and review model metadata.
-argument-hint: "[slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>]"
-allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*)]
+description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, subagent routing, optional Headroom-aware context compression, and review model metadata.
+argument-hint: "[slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>] [--headroom auto|off|required]"
+allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*), Bash(headroom:*), mcp__headroom__headroom_compress, mcp__headroom__headroom_retrieve, mcp__headroom__headroom_stats]
 ---
 
 # speckit.multi-model-review.review-package
@@ -24,12 +24,22 @@ Default to a **compact** package. Use `--full` only when:
 Use `--review-model <model[:axis]@axis>` to override the review model for a
 single package.
 
+Use Headroom opportunistically when it is available. In `auto` mode, the command
+still builds a valid package when Headroom is missing; in `required` mode, abort
+if Headroom MCP tools are not callable in the current host. Headroom should
+compress only the large raw inputs left after normal package reduction, and each
+compressed block must include enough notes for the reviewer to request the
+original or ask for a full package.
+
 Examples:
 
 ```text
 /multi-model-review:review-package C-12 --review-model codex-5.5:high@normal
 /multi-model-review:review-package L-30 --review-model codex-5.5:xhigh@normal
 /multi-model-review:review-package L-50 --review-model codex-5.5:high@priority
+/multi-model-review:review-package --headroom auto
+/multi-model-review:review-package --headroom off
+/multi-model-review:review-package --headroom required
 ```
 
 ## Model spec options
@@ -72,6 +82,7 @@ Review model guidance:
    - If the selected implementation model is a Claude model and options are missing, use `implementation_options = { "workload": "high", "allow_silent_upgrade": false }`.
    - Derive `spec_author_profile` from `spec_author_options` when the profile string is missing.
    - If `subagent_routing` is missing, infer `mode = off` and add a package note that no subagent routing was recorded.
+   - Read optional `context_compression`. If it is missing, use `{ "provider": "headroom", "mode": "auto", "min_tokens": 2000 }`.
    - Include a package note that defaults were inferred from missing config.
 
 2. Resolve the review model.
@@ -110,7 +121,19 @@ Review model guidance:
    - Else use `config.package_profile` when present.
    - Else default to `compact`.
 
-7. Gather raw inputs.
+7. Resolve Headroom-aware context compression.
+   - Parse `--headroom auto|off|required`. If absent, use `config.context_compression.mode`; if that is absent, use `auto`.
+   - `off`: do not call Headroom. Use the manual RTK-style reducers only.
+   - `auto`: use Headroom only when it is available and the input block exceeds the configured `min_tokens`.
+   - `required`: abort if Headroom MCP compression is unavailable.
+   - Prefer Headroom MCP tools when the host exposes `headroom_compress`, `headroom_retrieve`, and `headroom_stats`.
+   - The Headroom CLI is useful for install/status checks such as `headroom --version` or `headroom mcp status`, but do not assume a direct `headroom compress` subcommand exists.
+   - If only the CLI is present and no Headroom MCP tool is callable, mark package-time Headroom compression unavailable and use manual summaries.
+   - Do not start `headroom proxy`, `headroom wrap`, or any long-running background process from this command.
+   - Do not double-compress content that already contains a Headroom or CCR retrieval marker.
+   - If the external reviewer will not share the same local Headroom MCP/proxy store, keep compressed blocks self-describing and include enough diff excerpts for a `limited-but-actionable` review. Treat CCR hashes as optional retrieval aids, not as the only copy of review-critical evidence.
+
+8. Gather raw inputs.
    - `specs/<slug>/spec.md`, `plan.md`, `tasks.md` when present
    - task text matching `review_scope_id` when present
    - `git diff $BASE...HEAD`
@@ -118,14 +141,28 @@ Review model guidance:
    - root `CLAUDE.md`
    - any `CLAUDE.md` files under touched directories
 
-8. Reduce the package before rendering.
+9. Reduce the package before rendering.
    - Use RTK-style reduction even if RTK itself is not installed.
    - If RTK is installed, prefer RTK-assisted summaries when helpful.
+   - Apply manual filtering, grouping, truncation, and deduplication before invoking Headroom.
+   - If Headroom is enabled and available, use it for remaining large raw blocks such as verbose diffs, logs, JSON tool outputs, search results, code excerpts, or long prose rules.
+   - Preserve structure-critical data before compression: file paths, line numbers, error messages, function/class names, public API signatures, migrations, security-sensitive rules, and explicit acceptance criteria.
+   - For each Headroom-compressed block, record:
+     - source label, such as `git-diff`, `rules`, `tasks`, or `log`
+     - original token estimate
+     - compressed token estimate when available
+     - savings percentage when available
+     - transforms reported by Headroom when available
+     - CCR/retrieval hash when available
+     - retrieval query hints, such as file path, symbol, task ID, or error string
+   - If Headroom fails, add a package note and continue with manual summaries unless `--headroom required` was set.
+   - If `headroom_stats` is available, include a short final stats note in metadata.
 
    Build these placeholders:
 
    - `{{PACKAGE_PROFILE}}`
    - `{{PACKAGE_SCOPE}}`
+   - `{{CONTEXT_COMPRESSION}}`
    - `{{SPEC_AUTHOR_MODEL}}`
    - `{{SPEC_AUTHOR_OPTIONS}}`
    - `{{SPEC_AUTHOR_PROFILE}}`
@@ -144,7 +181,7 @@ Review model guidance:
    - `{{LOG_BRIEF}}`: trimmed commit trail
    - `{{DIFF_MANIFEST}}`: grouped file manifest with one-line purpose per file
    - `{{DIFF_EXCERPTS}}`: high-signal hunks only
-   - `{{PACKAGE_NOTES}}`: omissions, truncations, model routing, and scope notes
+   - `{{PACKAGE_NOTES}}`: omissions, truncations, model routing, scope notes, Headroom compression notes, and retrieval hints
 
    Appendix placeholders:
 
@@ -159,7 +196,7 @@ Review model guidance:
    - In `micro` and `compact`, appendices should be short omission notes.
    - In `full`, appendices may contain raw source material.
 
-9. Select the reviewer template.
+10. Select the reviewer template.
    - `codex-auto` -> `templates/codex-auto-review-prompt.md`
    - `codex-cli` -> `templates/codex-cli-review-prompt.md`
    - `codex-mcp` -> `templates/codex-mcp-review-prompt.md`
@@ -169,17 +206,18 @@ Review model guidance:
    - custom reviewer -> `templates/<id>-review-prompt.md`
    - If missing, abort with: "No template for reviewer `<id>`. Add `templates/<id>-review-prompt.md`."
 
-10. Render the template.
+11. Render the template.
    - Substitute all package metadata, brief, appendix, and path placeholders.
-   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, `{{REPORT_PATH}}`, `{{SPEC_AUTHOR_MODEL}}`, `{{SPEC_AUTHOR_OPTIONS}}`, `{{SPEC_AUTHOR_PROFILE}}`, `{{IMPLEMENTATION_MODEL}}`, `{{IMPLEMENTATION_OPTIONS}}`, `{{SUBAGENT_ROUTING}}`, `{{REVIEW_MODEL}}`, `{{REVIEW_OPTIONS}}`, and `{{REVIEW_PROFILE}}`.
+   - Also substitute `{{BASE_REF}}`, `{{HEAD_REF}}`, `{{REPORT_PATH}}`, `{{CONTEXT_COMPRESSION}}`, `{{SPEC_AUTHOR_MODEL}}`, `{{SPEC_AUTHOR_OPTIONS}}`, `{{SPEC_AUTHOR_PROFILE}}`, `{{IMPLEMENTATION_MODEL}}`, `{{IMPLEMENTATION_OPTIONS}}`, `{{SUBAGENT_ROUTING}}`, `{{REVIEW_MODEL}}`, `{{REVIEW_OPTIONS}}`, and `{{REVIEW_PROFILE}}`.
 
-11. Write outputs under `.cross-review/packages/<YYYYMMDD-HHMM>-<slug>/`.
+12. Write outputs under `.cross-review/packages/<YYYYMMDD-HHMM>-<slug>/`.
    - `review-package.md`
-   - `metadata.json` with base, head, builder, reviewer, selected detailed review model, spec author model/options/profile, implementation model/options, subagent routing, timestamp, slug, review scope ID, package profile, original arguments, and truncation notes
+   - `metadata.json` with base, head, builder, reviewer, selected detailed review model, spec author model/options/profile, implementation model/options, subagent routing, timestamp, slug, review scope ID, package profile, original arguments, context compression mode, Headroom availability, compressed block metadata, stats note, and truncation notes
 
-12. Print the next step.
+13. Print the next step.
    - Show the package path.
    - Show the selected package profile.
+   - Show the Headroom mode and whether compression was applied.
    - Show the selected review model raw string and structured options.
    - Show the exact reviewer command.
    - Remind the user where to write `review-report.md`.
@@ -207,3 +245,4 @@ must use the local Codex priority mechanism. Do not silently change it to normal
 - Do not include secrets from `.env`, `.envrc`, or similar.
 - Do not ship a huge raw package by default when a compact package would do.
 - Do not exceed roughly 200 KB of packaged content. Split by path if needed.
+- Do not rely on a transient CCR hash as the only source for evidence needed by an external reviewer who cannot access the same local Headroom store.

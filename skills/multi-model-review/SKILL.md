@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
 license: MIT
 ---
 
@@ -98,6 +98,7 @@ Recommended `config.json` keys:
 - `spec_dir`
 - `package_profile`
 - `subagent_routing`
+- `context_compression`
 
 Plugin-provided subagents:
 
@@ -178,6 +179,40 @@ When Claude Code can pass a per-invocation model to the Agent tool, use the reso
 
 Do not write Codex, Gemini, or unknown provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports that custom model. Preserve those models in handoff metadata and use the existing CLI/package path.
 
+## Headroom-aware context compression
+
+Use Headroom as an optional context-compression layer for large review inputs when the current host exposes Headroom MCP tools. This is additive to the compact-first package design; it does not replace the diff manifest, focused excerpts, or reviewer context-sufficiency checks.
+
+Headroom concepts to preserve in this skill:
+
+- Content routing: choose different compression behavior for JSON/tool output, logs, diffs, code, search results, and prose.
+- Structure preservation: keep file paths, line numbers, function and class signatures, public API names, errors, IDs, hashes, and acceptance criteria visible.
+- CCR retrieval: compressed blocks may include a retrieval hash so the reviewer can request the original through `headroom_retrieve` when the same local Headroom store is available.
+- Observability: `headroom_stats` can report savings and retrieval counts when available.
+- Local-first behavior: do not send raw package material to a hosted compressor and do not start long-running Headroom proxy or wrapper processes from the slash command.
+
+Recommended config:
+
+```json
+{
+  "context_compression": {
+    "provider": "headroom",
+    "mode": "auto",
+    "min_tokens": 2000,
+    "use_mcp": true,
+    "require_retrieval_access": false
+  }
+}
+```
+
+Modes:
+
+- `auto`: use Headroom MCP compression when it is callable; otherwise fall back to manual summaries.
+- `off`: do not use Headroom for package generation.
+- `required`: abort package generation if Headroom MCP compression is not callable.
+
+Headroom is most useful for oversized raw blocks left after manual reduction: verbose `git diff`, logs, JSON tool output, search results, long rules files, large source excerpts, and RAG-like context dumps. Do not use Headroom as a reason to omit review-critical evidence from the manifest or focused excerpts. If the reviewer cannot access the same local Headroom store, treat CCR hashes as optional hints and keep the package independently reviewable.
+
 ## Spec handoff flow
 
 Use `/multi-model-review:spec-handoff` before implementation when the user wants another model to produce or refine Spec Kit artifacts.
@@ -230,7 +265,7 @@ Print the selected spec author model, implementation model, subagent routing mod
 
 ## Export flow
 
-Build a self-contained markdown package. Default to **compact-first** packaging.
+Build a self-contained markdown package. Default to **compact-first** packaging with optional Headroom-aware compression for large residual context.
 
 ### 1. Resolve the feature
 
@@ -243,12 +278,22 @@ Build a self-contained markdown package. Default to **compact-first** packaging.
 - Base ref: config value or `main`
 - Optional path filter from `--paths`
 - Optional `--review-model <model[:axis]@axis>` override for a single review package
+- Optional `--headroom auto|off|required` override for a single review package
 - Reviewer mode:
   - `codex-mcp` implies `micro`
   - `codex-auto`, `codex-cli`, `claude-code`, `gemini-cli` should default to `compact`
   - `--full` overrides to `full`
 
-### 3. Gather raw inputs
+### 3. Resolve context compression
+
+- Read `context_compression` from config; default to Headroom `auto`.
+- If the user passes `--headroom`, it overrides config for this package only.
+- Prefer Headroom MCP tools when `headroom_compress`, `headroom_retrieve`, and `headroom_stats` are callable.
+- Treat the Headroom CLI as an install/status surface unless the current host exposes callable MCP tools; do not assume a direct CLI compression command.
+- If mode is `required` and Headroom MCP compression is unavailable, abort with a short reason.
+- If mode is `auto` and Headroom is unavailable, continue with manual RTK-style reduction.
+
+### 4. Gather raw inputs
 
 - `spec.md`
 - `plan.md`
@@ -257,17 +302,29 @@ Build a self-contained markdown package. Default to **compact-first** packaging.
 - `git log <base>...HEAD --oneline`
 - relevant `CLAUDE.md` files
 
-### 4. Reduce the package before rendering
+### 5. Reduce the package before rendering
 
-Use RTK-style reduction:
+Use RTK-style reduction first:
 
 - **Filtering**: drop generated noise, lockfile churn, snapshots, vendored paths unless the feature depends on them
 - **Grouping**: create a grouped diff manifest before raw hunks
 - **Truncation**: cap logs, long task lists, repeated rule text, and low-signal hunks
 - **Deduplication**: collapse repeated context
 
+Then, when Headroom is enabled and callable, compress large remaining blocks using `headroom_compress`. Keep the compressed content in the package, not the raw block, and record:
+
+- source label
+- original and compressed token estimates when available
+- savings percentage when available
+- transforms when available
+- CCR retrieval hash when available
+- query hints that help retrieve a smaller slice, such as file path, symbol, task ID, or error text
+
+If a Headroom-compressed block hides context that is necessary to verify a finding, the reviewer should either use `headroom_retrieve` when available or set `Context sufficiency: needs-full-package`.
+
 Create these placeholders:
 
+- `CONTEXT_COMPRESSION`
 - `SPEC_AUTHOR_MODEL`
 - `SPEC_AUTHOR_OPTIONS`
 - `SPEC_AUTHOR_PROFILE`
@@ -299,8 +356,9 @@ Rules:
 - In `compact` and `micro`, appendices should be short omission notes, not raw dumps.
 - In `full`, appendices may include the raw source material.
 - If RTK is installed, prefer RTK-assisted summaries when gathering shell output. If it is not installed, create equivalent summaries manually.
+- If Headroom is available, use it only after manual reduction and never as the sole holder of review-critical evidence for reviewers that cannot access the same local CCR store.
 
-### 5. Render the reviewer template
+### 6. Render the reviewer template
 
 Use `templates/<reviewer>-review-prompt.md`.
 
@@ -312,14 +370,14 @@ The template must tell the reviewer to:
 - report `Context sufficiency`
 - write `review-report.md` using `templates/review-report.md`
 
-### 6. Write outputs
+### 7. Write outputs
 
 Write:
 
 - `review-package.md`
-- `metadata.json` with base/head, roles, selected detailed review model, spec author model, spec author options, implementation model, implementation options, subagent routing, profile, and truncation notes
+- `metadata.json` with base/head, roles, selected detailed review model, spec author model, spec author options, implementation model, implementation options, subagent routing, context compression mode, Headroom availability, compressed block metadata, profile, and truncation notes
 
-### 7. Print the next command
+### 8. Print the next command
 
 Print the exact reviewer command and the output path for `review-report.md`. For Codex review models, include the selected model ID in the command hint and preserve `speed=priority` in metadata even if the local CLI requires a separate priority mechanism.
 
