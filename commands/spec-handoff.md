@@ -82,6 +82,8 @@ wins and the command should mention that `--heavy` was ignored.
 
 ## Steps
 
+When the work-assist orchestration layer is available, drive these steps through it: Superpowers `brainstorming`/`writing-plans` to tighten the brief and task slices, and `/ulw` or omo to research existing artifacts and rules. Fall back to the `mmr-*` subagents or a sequential pass when those tools are absent, and never pass secrets into their prompts. See `skills/multi-model-review/SKILL.md` -> "Work-assist orchestration". Do not run the spec author model yourself.
+
 1. Load `.cross-review/config.json` when present.
 
 2. Resolve model routing.
@@ -173,7 +175,8 @@ wins and the command should mention that `--heavy` was ignored.
    - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
    - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
    - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   - **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+   - **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
    ```
 
 ## Do not

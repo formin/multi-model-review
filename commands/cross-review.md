@@ -414,14 +414,15 @@ Keep status output short and scannable.
 
 ## Completion token report
 
-Finish the response with the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report"). Configuration and status calls rarely gather large shell output or compress context, so both layers are usually `used=no` here; still print the block for consistency, reading `rtk gain` and `headroom_stats` for any session savings and naming the next applicable command when a layer did not engage. Report RTK and Headroom separately from measured stats only; never estimate.
+Finish the response with the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report"). Configuration and status calls rarely gather large shell output or compress context, so both layers are usually `used=no` here; still print the block for consistency, reading `rtk gain` and `headroom_stats` for any session savings and naming the next applicable command when a layer did not engage. Report RTK and Headroom separately from measured stats only; never estimate. The work-assist orchestration tools (omo, UltraWork, lazycodex, Superpowers) are usually `n/a` for config/status calls; record them as usage only when they did run.
 
 ```text
 **Token, Headroom & RTK**
 - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
 - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
 - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+- **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+- **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
 ```
 
 ## Refer to

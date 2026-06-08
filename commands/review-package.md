@@ -69,6 +69,8 @@ Review model guidance:
 
 ## Steps
 
+When the work-assist orchestration layer is available, use omo or lazycodex for fast LSP/AST code exploration while gathering and reducing the package, and run an `mmr-review-checker` preflight under omo or `/ulw` when helpful. Fall back to native gathering otherwise, and never pass secrets into their prompts. See `skills/multi-model-review/SKILL.md` -> "Work-assist orchestration".
+
 1. Load `.cross-review/config.json`.
    - If missing, abort with: "Run `/multi-model-review:cross-review init` first."
    - Read `model_defaults`, `spec_author_model`, `spec_author_options`, optional `spec_author_profile`, `implementation_model`, `implementation_options`, optional `review_model`, optional `review_options`, and optional `subagent_routing`.
@@ -235,7 +237,8 @@ Review model guidance:
    - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
    - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
    - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   - **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+   - **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
    ```
 
 ## Reviewer command hints

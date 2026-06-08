@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices. When a flow completes, it ends with a measured "Token, Headroom & RTK" report that states the RTK and Headroom token savings separately.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices. When available, it also drives execution through an optional work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) and falls back to its own subagents when those tools are absent. When a flow completes, it ends with a measured "Token, Headroom & RTK" report that states the RTK and Headroom token savings separately and lists work-assist tool usage.
 license: MIT
 ---
 
@@ -179,6 +179,31 @@ When Claude Code can pass a per-invocation model to the Agent tool, use the reso
 
 Do not write Codex, Gemini, or unknown provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports that custom model. Preserve those models in handoff metadata and use the existing CLI/package path.
 
+## Work-assist orchestration (omo · UltraWork · lazycodex · Superpowers)
+
+`multi-model-review` runs better when heavy, multi-step work is planned and distributed instead of carried by one linear pass. When these tools are installed and callable, use them as the **preferred orchestration and methodology layer**. When they are not, fall back to this plugin's own `mmr-*` subagents (see "Subagent auto-routing") or a plain sequential pass, and record the fallback reason in the completion report. They are work-assist tools, **not** token-savers: only RTK and Headroom report measured savings, and the footer lists these four as usage only.
+
+Roles:
+
+- **Superpowers** (methodology framework): `brainstorming` -> `writing-plans` -> `executing-plans`, plus `test-driven-development`, `systematic-debugging`, `subagent-driven-development`, and `verification-before-completion`. Use it to structure a flow before acting — tighten an ambiguous spec brief, plan implementation before edits, and drive remediation with verification instead of guesswork.
+- **UltraWork** (`/ulw <task>`, `ultrawork-sanguo`): a dispatcher that auto-routes independent task slices to specialized agent tiers. Use it to split work that has clear, independent slices.
+- **omo** (oh-my-openagent): a multi-agent execution harness with model routing and LSP/AST code intelligence. Use it to run research, implementation, and verification as parallel subagents over the codebase.
+- **lazycodex** (omo's Codex edition): LSP/AST code exploration and project memory. Prefer it when the builder or reviewer surface is Codex.
+
+Where to apply:
+
+- **Spec handoff**: use Superpowers `brainstorming`/`writing-plans` to tighten the brief and task slices, and `/ulw` or omo to research existing `spec.md`/`plan.md`/`tasks.md` and project rules. Do not run the spec author model itself.
+- **Export (review package)**: use omo or lazycodex for fast code exploration while reducing the package; an `mmr-review-checker` preflight can run under omo or `/ulw`.
+- **Ingest (apply review)**: use Superpowers `systematic-debugging` and `subagent-driven-development` to plan accepted fixes, `/ulw` to batch independent findings, and omo to implement-and-verify. Keep every user confirmation gate intact.
+- **cross-review (config/status)**: usually no orchestration; just record availability.
+
+Rules:
+
+- Probe availability first (for example `/ulw` or `ultrawork` help, the omo and lazycodex CLIs, the Superpowers skills). If a tool is missing or unusable, fall back without stopping and note "not used / fallback reason".
+- Do not pass secrets, credentials, raw `.env` content, or sensitive paths into any of these tools' prompts. Send masked summaries and verification commands only.
+- These tools do not reduce tokens. Their large outputs still pass through RTK and Headroom, and the footer reports them as usage only.
+- Keep top-level control in the main conversation or slash command: these orchestrators and the `mmr-*` subagents should not spawn deeper orchestration loops.
+
 ## Headroom-aware context compression
 
 Use Headroom as an optional context-compression layer for large review inputs when the current host exposes Headroom MCP tools. This is additive to the compact-first package design; it does not replace the diff manifest, focused excerpts, or reviewer context-sufficiency checks.
@@ -224,7 +249,7 @@ Measure, never estimate:
 - If a source has no real statistics, write `used=no` (or `n/a`) with a one-line reason. Do not fabricate a savings number, and do not blend the two layers into a single figure except as an explicit combined total when both are measured.
 - Keep secrets, sensitive paths, and raw evidence out of the report.
 
-Subagent routing (scout, worker, heavy-planner, review-checker) is orchestration, not a compression layer, so report it as usage only, never as a token-savings number.
+The work-assist tools (omo, UltraWork, lazycodex, Superpowers) and subagent routing (scout, worker, heavy-planner, review-checker) are orchestration, not a compression layer, so report them as usage only, never as a token-savings number.
 
 Append this block at the very end of the final response for each completed flow (spec handoff written, review package exported, or review report ingested):
 
@@ -233,7 +258,8 @@ Append this block at the very end of the final response for each completed flow 
 - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
 - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
 - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+- **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+- **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
 ```
 
 When neither layer engaged — for example a small config-only `cross-review status` call — still print the block with `used=no` and the next command that would apply, so the report stays consistent across every flow.
@@ -241,6 +267,8 @@ When neither layer engaged — for example a small config-only `cross-review sta
 ## Spec handoff flow
 
 Use `/multi-model-review:spec-handoff` before implementation when the user wants another model to produce or refine Spec Kit artifacts.
+
+When the work-assist orchestration layer is available, drive this flow through it (Superpowers to shape the brief, `/ulw` or omo to research artifacts); otherwise fall back to the `mmr-*` subagents or a sequential pass.
 
 ### 1. Resolve model routing
 
@@ -293,6 +321,8 @@ Finish the response with the **Completion token report** described above.
 ## Export flow
 
 Build a self-contained markdown package. Default to **compact-first** packaging with optional Headroom-aware compression for large residual context.
+
+When the work-assist orchestration layer is available, use omo or lazycodex for fast code exploration while reducing the package; otherwise proceed natively.
 
 ### 1. Resolve the feature
 
@@ -419,6 +449,8 @@ Finish the response with the **Completion token report**. This is the flow with 
 
 Read the latest `review-report.md` unless the user points to a specific package directory.
 
+When the work-assist orchestration layer is available, use Superpowers and `/ulw` or omo to plan and apply accepted fixes; otherwise fall back to the `mmr-*` subagents. Keep every user confirmation gate intact.
+
 Parse:
 
 - `Context sufficiency`
@@ -449,6 +481,7 @@ After summarizing applied versus skipped findings, finish the response with the 
 - Automatic subagent routing may choose a different configured role model for a different kind of task, but record the selected role, agent, model key, and reason in metadata or the task plan.
 - Subagents should not spawn subagents. Keep orchestration in the main conversation or slash command.
 - End every completed flow with the Completion token report. Report RTK and Headroom savings separately, from `rtk gain` and `headroom_stats`/`compressed_blocks` measurements only; never estimate a number, and mark `used=no` when a layer did not engage.
+- Treat the work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) as optional. Use it when available, fall back to the `mmr-*` subagents or sequential execution otherwise, report it as usage only (never a savings number), and never pass secrets into its prompts.
 
 ## Related files
 

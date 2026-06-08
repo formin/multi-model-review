@@ -16,6 +16,8 @@ Arguments: `$ARGUMENTS`
 
 ## Steps
 
+When the work-assist orchestration layer is available, use it to plan and apply accepted fixes: Superpowers `systematic-debugging` and `subagent-driven-development` to plan, `/ulw` to batch independent findings, and omo to implement-and-verify. Fall back to the `mmr-*` subagents otherwise, keep every user confirmation gate intact, and never pass secrets into their prompts. See `skills/multi-model-review/SKILL.md` -> "Work-assist orchestration".
+
 1. Locate the package.
    - If `$ARGUMENTS` contains a path, use it.
    - Else pick the latest `.cross-review/packages/*/` that contains `review-report.md`.
@@ -80,7 +82,8 @@ Arguments: `$ARGUMENTS`
    - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
    - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
    - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   - **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+   - **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
    ```
 
 ## Guardrails

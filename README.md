@@ -162,6 +162,19 @@ The plugin ships Claude Code subagents in `agents/` and can record a routing pol
 
 When `subagent_routing.mode` is `auto`, tasks can be tagged with route hints such as `[route:scout]`, `[route:heavy-planner]`, `[route:worker]`, or `[route:review-checker]`. The main builder chooses the matching subagent and the configured role model. If Claude Code cannot use a configured non-Claude model in subagent frontmatter, the model stays in the markdown handoff or CLI review path instead of being silently substituted.
 
+## Work-assist orchestration (optional)
+
+For heavy, multi-step work, the skill can drive execution through an optional orchestration and methodology layer when those tools are installed:
+
+| Tool | Role |
+|------|------|
+| [Superpowers](https://github.com/obra/superpowers) | methodology: brainstorm → plan → execute, TDD, systematic debugging, subagent-driven development |
+| UltraWork (`/ulw`, `ultrawork-sanguo`) | dispatcher that auto-routes independent task slices to specialist agents |
+| [omo](https://github.com/code-yeongyu/oh-my-openagent) | multi-agent execution harness with model routing and LSP/AST code intelligence |
+| [lazycodex](https://github.com/code-yeongyu/lazycodex) | omo's Codex edition for LSP/AST code exploration |
+
+This layer is optional. When the tools are absent it falls back to the plugin's own `mmr-*` subagents or a sequential pass. These are orchestration helpers, **not** token-savers: only RTK and Headroom report measured savings, and the completion footer lists work-assist tools as usage only.
+
 ## Compact-first packaging
 
 The package format is now compact-first, inspired by [rtk](https://github.com/rtk-ai/rtk).
@@ -209,10 +222,11 @@ When a flow finishes, the skill ends its response with a measured **Token, Headr
 - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
 - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
 - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+- **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+- **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
 ```
 
-RTK (shell-output reduction) and Headroom (context compression) are reported separately and from real statistics only — `rtk gain` and `headroom_stats`/package `compressed_blocks`. A layer that did not engage shows `used=no` rather than an estimated number.
+RTK (shell-output reduction) and Headroom (context compression) are reported separately and from real statistics only — `rtk gain` and `headroom_stats`/package `compressed_blocks`. A layer that did not engage shows `used=no` rather than an estimated number. The work-assist orchestration tools are listed on their own line as usage only, never as a savings figure.
 
 ## Supported reviewers
 

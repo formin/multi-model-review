@@ -188,7 +188,7 @@ Token efficiency is only visible if the workflow reports it. Every `multi-model-
 - **RTK** covers the shell output gathered while building a handoff (`git diff`, `git log`, grep, rules). Numbers come from `rtk gain`.
 - **Headroom** covers the large residual blocks compressed during packaging. Numbers come from the package `metadata.json` `compressed_blocks` (`original_tokens` vs `compressed_tokens`) and/or `headroom_stats`.
 
-The two layers are always reported separately and from real statistics only. If a layer did not engage — RTK not installed, Headroom `off` or unavailable, or a config-only call that compressed nothing — the report says `used=no` with the next command that would apply, instead of estimating a number. Subagent routing is listed as usage only, because it is an orchestration layer rather than a compression layer.
+The two layers are always reported separately and from real statistics only. If a layer did not engage — RTK not installed, Headroom `off` or unavailable, or a config-only call that compressed nothing — the report says `used=no` with the next command that would apply, instead of estimating a number. The work-assist orchestration tools (omo, UltraWork, lazycodex, Superpowers) and subagent routing are listed as usage only, because they are orchestration layers rather than compression layers.
 
 Footer shape:
 
@@ -197,10 +197,11 @@ Footer shape:
 - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
 - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
 - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
-- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+- **Work-assist** (orchestration, usage only): ulw=<used|n/a>, omo=<used|n/a>, lazycodex=<used|n/a>, superpowers=<used|n/a>
+- **Subagent routing** (usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
 ```
 
-This mirrors the measured-reporting contract of the companion `token-saver` skill: only RTK and Headroom report token savings, and they are never blended or estimated.
+This mirrors the measured-reporting contract of the companion `token-saver` skill: only RTK and Headroom report token savings, and they are never blended or estimated. The work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) helps run the work but never reports a savings number.
 
 ## References
 
