@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices. When a flow completes, it ends with a measured "Token, Headroom & RTK" report that states the RTK and Headroom token savings separately.
 license: MIT
 ---
 
@@ -213,6 +213,31 @@ Modes:
 
 Headroom is most useful for oversized raw blocks left after manual reduction: verbose `git diff`, logs, JSON tool output, search results, long rules files, large source excerpts, and RAG-like context dumps. Do not use Headroom as a reason to omit review-critical evidence from the manifest or focused excerpts. If the reviewer cannot access the same local Headroom store, treat CCR hashes as optional hints and keep the package independently reviewable.
 
+## Completion token report (RTK + Headroom)
+
+Every `multi-model-review` flow ends by telling the user how many tokens the two compression layers actually saved. RTK reduces the shell output gathered while building a handoff (`git diff`, `git log`, grep, rules). Headroom compresses the large residual blocks that survive manual reduction. Report the two layers **separately** so the user can see what each one contributed; this is the same measured-reporting contract the companion `token-saver` skill uses.
+
+Measure, never estimate:
+
+- **RTK**: read `rtk gain` (or `rtk gain --format json`). RTK counts as `used=yes` only when shell output actually went through `rtk ...` calls or an RTK hook. If only the built-in Read/Grep/Glob tools ran, or RTK is not installed, report `used=no` and name the next command that would apply, such as `rtk git diff` or `rtk grep`.
+- **Headroom**: sum the per-block `original_tokens` and `compressed_tokens` already recorded in this run's `metadata.json` `compressed_blocks`, and/or read session totals from `headroom_stats`. If Headroom was `off`, unavailable, or compressed nothing, report `used=no`.
+- If a source has no real statistics, write `used=no` (or `n/a`) with a one-line reason. Do not fabricate a savings number, and do not blend the two layers into a single figure except as an explicit combined total when both are measured.
+- Keep secrets, sensitive paths, and raw evidence out of the report.
+
+Subagent routing (scout, worker, heavy-planner, review-checker) is orchestration, not a compression layer, so report it as usage only, never as a token-savings number.
+
+Append this block at the very end of the final response for each completed flow (spec handoff written, review package exported, or review report ingested):
+
+```text
+**Token, Headroom & RTK**
+- **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+- **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+- **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+```
+
+When neither layer engaged — for example a small config-only `cross-review status` call — still print the block with `used=no` and the next command that would apply, so the report stays consistent across every flow.
+
 ## Spec handoff flow
 
 Use `/multi-model-review:spec-handoff` before implementation when the user wants another model to produce or refine Spec Kit artifacts.
@@ -262,6 +287,8 @@ Write:
 - `metadata.json` with the selected detailed spec model, spec author model/options/profile, selected detailed implementation model, implementation options, resolved subagent routing, timestamp, slug, original arguments, and source notes
 
 Print the selected spec author model, implementation model, subagent routing mode, prompt path, and expected `spec-output.md` path.
+
+Finish the response with the **Completion token report** described above.
 
 ## Export flow
 
@@ -386,6 +413,8 @@ If the report later says `Context sufficiency: needs-full-package`, tell the use
 - `/multi-model-review:review-package --full`
 - or `/multi-model-review:review-package --paths <subset>`
 
+Finish the response with the **Completion token report**. This is the flow with the most concrete numbers: sum the `compressed_blocks` savings recorded in `metadata.json` for the Headroom line, and read `rtk gain` for the RTK line.
+
 ## Ingest flow
 
 Read the latest `review-report.md` unless the user points to a specific package directory.
@@ -408,6 +437,8 @@ Special handling:
 - if `Context sufficiency = needs-full-package`, stop before making broad edits and recommend a `--full` or `--paths` rerun
 - never auto-apply a `critical` finding without explicit approval
 
+After summarizing applied versus skipped findings, finish the response with the **Completion token report**.
+
 ## Important constraints
 
 - Do not run the reviewer model for the user.
@@ -417,6 +448,7 @@ Special handling:
 - Do not silently upgrade the configured implementation model. If `model_defaults.dev` says `sonnet-4.6@high`, keep that routing unless the user explicitly overrides it.
 - Automatic subagent routing may choose a different configured role model for a different kind of task, but record the selected role, agent, model key, and reason in metadata or the task plan.
 - Subagents should not spawn subagents. Keep orchestration in the main conversation or slash command.
+- End every completed flow with the Completion token report. Report RTK and Headroom savings separately, from `rtk gain` and `headroom_stats`/`compressed_blocks` measurements only; never estimate a number, and mark `used=no` when a layer did not engage.
 
 ## Related files
 

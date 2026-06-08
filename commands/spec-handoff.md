@@ -1,7 +1,7 @@
 ---
 description: Export a spec-authoring handoff prompt for the configured development spec model, model-specific options, and optional subagent task routing.
 argument-hint: "[slug|feature brief] [--spec-model <model[:axis]@axis>] [--heavy] [--plan] [--subagents auto|off] [--model <id>] [--model-option <key=value>] [--dev-model <model[:axis]@axis>] [--implementation-model <id>] [--implementation-option <key=value>]"
-allowed-tools: [Read, Write, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git diff --stat:*)]
+allowed-tools: [Read, Write, Glob, Grep, Bash(git status:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git diff --stat:*), Bash(rtk gain:*), mcp__headroom__headroom_stats]
 ---
 
 # speckit.multi-model-review.spec-handoff
@@ -163,6 +163,18 @@ wins and the command should mention that `--heavy` was ignored.
    - Print a command hint only when the local CLI is obvious:
      - `codex-5.5`: `codex exec -m codex-5.5 - < .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md > .cross-review/spec-handoffs/<pkg>/spec-output.md`
      - `opus-4.7`: `claude --model opus-4.7 -p "$(cat .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md)" > .cross-review/spec-handoffs/<pkg>/spec-output.md`
+
+9. Finish with the Completion token report.
+   - Append the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report").
+   - Report RTK and Headroom separately, from measured stats only (`rtk gain`, `headroom_stats`); mark `used=no` with the next applicable command when a layer did not engage. Do not estimate or expose secrets.
+
+   ```text
+   **Token, Headroom & RTK**
+   - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+   - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+   - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   ```
 
 ## Do not
 

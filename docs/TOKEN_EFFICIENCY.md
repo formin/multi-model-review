@@ -181,6 +181,27 @@ The plugin does not require Headroom. Use it only when the current host exposes 
 
 The Headroom CLI is useful for install and status checks such as `headroom --version` and `headroom mcp status`, but do not assume a direct CLI compression subcommand exists.
 
+## Completion token report
+
+Token efficiency is only visible if the workflow reports it. Every `multi-model-review` flow therefore ends with a measured **Token, Headroom & RTK** footer that states what each compression layer saved, separately:
+
+- **RTK** covers the shell output gathered while building a handoff (`git diff`, `git log`, grep, rules). Numbers come from `rtk gain`.
+- **Headroom** covers the large residual blocks compressed during packaging. Numbers come from the package `metadata.json` `compressed_blocks` (`original_tokens` vs `compressed_tokens`) and/or `headroom_stats`.
+
+The two layers are always reported separately and from real statistics only. If a layer did not engage — RTK not installed, Headroom `off` or unavailable, or a config-only call that compressed nothing — the report says `used=no` with the next command that would apply, instead of estimating a number. Subagent routing is listed as usage only, because it is an orchestration layer rather than a compression layer.
+
+Footer shape:
+
+```text
+**Token, Headroom & RTK**
+- **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+- **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+- **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+```
+
+This mirrors the measured-reporting contract of the companion `token-saver` skill: only RTK and Headroom report token savings, and they are never blended or estimated.
+
 ## References
 
 - [GitHub Spec Kit](https://github.com/github/spec-kit)

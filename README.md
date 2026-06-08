@@ -200,6 +200,20 @@ Headroom modes:
 
 Details live in [docs/TOKEN_EFFICIENCY.md](docs/TOKEN_EFFICIENCY.md) and [docs/HEADROOM.md](docs/HEADROOM.md).
 
+### Completion token report
+
+When a flow finishes, the skill ends its response with a measured **Token, Headroom & RTK** footer so you can see what each compression layer saved:
+
+```text
+**Token, Headroom & RTK**
+- **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+- **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+- **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+```
+
+RTK (shell-output reduction) and Headroom (context compression) are reported separately and from real statistics only — `rtk gain` and `headroom_stats`/package `compressed_blocks`. A layer that did not engage shows `used=no` rather than an estimated number.
+
 ## Supported reviewers
 
 | Reviewer | Template | Example command |

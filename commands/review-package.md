@@ -1,7 +1,7 @@
 ---
 description: Export a compact multi-model review package for the reviewer model, including spec-author, implementation, subagent routing, optional Headroom-aware context compression, and review model metadata.
 argument-hint: "[slug|task-id] [--base <ref>] [--full] [--micro] [--paths <glob,...>] [--review-model <model[:axis]@axis>] [--headroom auto|off|required]"
-allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*), Bash(headroom:*), mcp__headroom__headroom_compress, mcp__headroom__headroom_retrieve, mcp__headroom__headroom_stats]
+allowed-tools: [Read, Write, Glob, Grep, Bash(git diff:*), Bash(git log:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git diff --stat:*), Bash(git diff --name-only:*), Bash(git diff --name-status:*), Bash(headroom:*), Bash(rtk gain:*), mcp__headroom__headroom_compress, mcp__headroom__headroom_retrieve, mcp__headroom__headroom_stats]
 ---
 
 # speckit.multi-model-review.review-package
@@ -224,6 +224,19 @@ Review model guidance:
    - If the report later says `Context sufficiency: needs-full-package`, recommend:
      - `/multi-model-review:review-package --full`
      - or `/multi-model-review:review-package --paths <subset>`
+
+14. Finish with the Completion token report.
+   - Append the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report").
+   - This flow has the most concrete numbers: sum the `compressed_blocks` `original_tokens`/`compressed_tokens` written to `metadata.json` for the Headroom line, and read `headroom_stats` for session totals when available.
+   - Read `rtk gain` for the RTK line. Report the two layers separately from measured stats only; mark `used=no` with the next applicable command when a layer did not engage. Do not estimate or expose secrets.
+
+   ```text
+   **Token, Headroom & RTK**
+   - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+   - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+   - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   ```
 
 ## Reviewer command hints
 

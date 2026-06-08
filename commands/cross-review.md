@@ -1,7 +1,7 @@
 ---
 description: Initialize config or show status for the multi-model-review workflow, including spec-author, heavy-spec, implementation, review, subagent model routing, and optional Headroom-aware context compression.
 argument-hint: "[init|status|models set] [--spec <model[:axis]@axis>] [--spec-heavy <model[:axis]@axis>] [--dev <model[:axis]@axis>] [--review <model[:axis]@axis>] [--subagents auto|off] [--subagent-policy conservative|balanced|specialist] [--headroom auto|off|required] [--headroom-min-tokens <n>]"
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, mcp__headroom__headroom_stats]
 ---
 
 # speckit.multi-model-review.cross-review
@@ -411,6 +411,18 @@ Example config:
 ## Output style
 
 Keep status output short and scannable.
+
+## Completion token report
+
+Finish the response with the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report"). Configuration and status calls rarely gather large shell output or compress context, so both layers are usually `used=no` here; still print the block for consistency, reading `rtk gain` and `headroom_stats` for any session savings and naming the next applicable command when a layer did not engage. Report RTK and Headroom separately from measured stats only; never estimate.
+
+```text
+**Token, Headroom & RTK**
+- **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+- **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+- **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+- **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+```
 
 ## Refer to
 

@@ -1,7 +1,7 @@
 ---
 description: Ingest the reviewer's review-report.md and drive remediation, optionally using configured subagent routing for accepted fixes.
 argument-hint: "[package-dir] [--min-confidence <0-100>] [--subagents auto|off]"
-allowed-tools: [Read, Write, Edit, Glob, Grep, Agent, Bash(git diff:*), Bash(git log:*)]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Agent, Bash(git diff:*), Bash(git log:*), Bash(rtk gain:*), mcp__headroom__headroom_stats]
 ---
 
 # speckit.multi-model-review.apply-review
@@ -69,6 +69,19 @@ Arguments: `$ARGUMENTS`
    - remind the user that a re-review means:
      - `/multi-model-review:review-package`
      - run the reviewer again
+
+8. Finish with the Completion token report.
+   - Append the `**Token, Headroom & RTK**` block from `skills/multi-model-review/SKILL.md` (section "Completion token report").
+   - The ingest pass itself rarely gathers large shell output, so RTK and Headroom are often `used=no` here; read `rtk gain` and `headroom_stats` for any session savings, and read the package `metadata.json` `compressed_blocks` to credit what the earlier packaging compressed.
+   - Report the two layers separately from measured stats only; never estimate, and keep secrets out of the report.
+
+   ```text
+   **Token, Headroom & RTK**
+   - **RTK**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `rtk gain`
+   - **Headroom**: used=<yes|no> — saved ≈ <N> tok (<P>%) · via `headroom_stats` / package `compressed_blocks`
+   - **Combined saved**: ≈ <RTK+Headroom> tok   (only when both layers are measured)
+   - **Subagent routing** (orchestration, usage only): scout=<used|n/a>, worker=<used|n/a>, heavy-planner=<used|n/a>, review-checker=<used|n/a>
+   ```
 
 ## Guardrails
 
