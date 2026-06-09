@@ -1,7 +1,7 @@
 {
   "name": "multi-model-review",
   "description": "Cross-agent Spec-Driven Development workflow. Route spec authoring, implementation, automatic subagent task slices, and review across Claude, Codex, Gemini, or other CLI-capable models using portable Spec Kit artifacts.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "formin",
     "url": "https://github.com/formin"

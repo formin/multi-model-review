@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "multi-model-review"
   name: "Multi-Model Review"
-  version: "0.1.0"
+  version: "0.1.1"
   description: "Cross-model Spec Kit handoffs for spec authoring, implementation routing, and review."
   author: "formin"
   repository: "https://github.com/formin/multi-model-review"

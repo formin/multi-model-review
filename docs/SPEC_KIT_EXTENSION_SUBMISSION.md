@@ -1,20 +1,20 @@
 # Spec Kit Extension Submission
 
-This file collects the upstream Spec Kit catalog changes needed after a `v0.1.0` GitHub release is published for this repository.
+This file collects the upstream Spec Kit catalog changes needed after a `v0.1.1` GitHub release is published for this repository.
 
 ## Release Prerequisite
 
 Create a release tag that matches `extension.yml`:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 The release archive URL used by Spec Kit will be:
 
 ```text
-https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.0.zip
+https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.1.zip
 ```
 
 ## Community Catalog Entry
@@ -27,8 +27,8 @@ Add this entry to `extensions/catalog.community.json` in the `github/spec-kit` r
   "id": "multi-model-review",
   "description": "Cross-model Spec Kit handoffs for spec authoring, implementation routing, and review.",
   "author": "formin",
-  "version": "0.1.0",
-  "download_url": "https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.0.zip",
+  "version": "0.1.1",
+  "download_url": "https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.1.zip",
   "repository": "https://github.com/formin/multi-model-review",
   "homepage": "https://github.com/formin/multi-model-review",
   "documentation": "https://github.com/formin/multi-model-review/blob/main/README.md",
@@ -70,7 +70,7 @@ Add this entry to `extensions/catalog.community.json` in the `github/spec-kit` r
   "downloads": 0,
   "stars": 0,
   "created_at": "2026-05-04T00:00:00Z",
-  "updated_at": "2026-05-04T00:00:00Z"
+  "updated_at": "2026-06-09T00:00:00Z"
 }
 ```
 
@@ -91,4 +91,4 @@ Add this row to the root `README.md` Community Extensions table in alphabetical 
 - [ ] README includes Spec Kit extension installation and usage instructions.
 - [ ] LICENSE and CHANGELOG are present.
 - [ ] Local dev install succeeds with `specify extension add --dev <repo-path>`.
-- [ ] Release install succeeds with `specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.0.zip`.
+- [ ] Release install succeeds with `specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.1.zip`.

@@ -272,10 +272,10 @@ specify extension add --dev /path/to/multi-model-review
 specify extension list
 ```
 
-After a `v0.1.0` release is published, users can install directly from the release archive:
+After a `v0.1.1` release is published, users can install directly from the release archive:
 
 ```bash
-specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.0.zip
+specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.1.zip
 ```
 
 Registered Spec Kit command names:
