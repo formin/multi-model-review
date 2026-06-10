@@ -205,6 +205,7 @@ When the work-assist orchestration layer is available, use omo or lazycodex for 
    - `codex-cli` legacy fallback -> `templates/codex-review-prompt.md`
    - `claude-code` -> `templates/claude-review-prompt.md`
    - `gemini-cli` -> `templates/gemini-review-prompt.md`
+   - `hermes` -> `templates/hermes-review-prompt.md`
    - custom reviewer -> `templates/<id>-review-prompt.md`
    - If missing, abort with: "No template for reviewer `<id>`. Add `templates/<id>-review-prompt.md`."
 
@@ -250,6 +251,7 @@ When the work-assist orchestration layer is available, use omo or lazycodex for 
 | `codex-cli` | `codex exec -m <review_model> --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md` |
 | `claude-code` | `claude -p "$(cat .cross-review/packages/<pkg>/review-package.md)" > .cross-review/packages/<pkg>/review-report.md` |
 | `gemini-cli` | `gemini --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md` |
+| `hermes` | Open a Hermes Agent session, provide `.cross-review/packages/<pkg>/review-package.md`, and save the reply as `.cross-review/packages/<pkg>/review-report.md` |
 
 If the selected review model uses `speed=priority` and the local CLI does not
 expose a priority flag, preserve `speed=priority` in metadata and say the user

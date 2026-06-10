@@ -90,6 +90,7 @@ Recommended defaults:
 - `codex-cli` -> `compact`
 - `claude-code` reviewer -> `compact`
 - `gemini-cli` reviewer -> `compact`
+- `hermes` reviewer -> `compact`
 - Headroom context compression -> `auto`
 
 ## Compact-first workflow

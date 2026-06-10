@@ -133,6 +133,7 @@ Produce a review report that follows this schema exactly:
 - location: <path/to/file.ext:LINE or path/to/file.ext>
 - summary: <one line>
 - detail: <1-3 sentences of evidence>
+- evidence: <pointer to the diff excerpt, manifest entry, or spec/plan/tasks/rules line in this package that grounds the finding>
 - suggested_fix: <concrete suggestion or n/a>
 ```
 
@@ -146,6 +147,7 @@ Produce a review report that follows this schema exactly:
 6. Subagent route fit when routing metadata is present
 7. Headroom compressed context and retrieval needs when present
 8. Context sufficiency
+9. Evidence grounding: every finding cites evidence reachable inside this package; if you cannot ground a claim, lower its confidence instead of inventing support
 
 ## What not to flag
 

@@ -258,6 +258,7 @@ The `mcp__codex__codex` path is hard-limited to about 60 seconds, so non-trivial
   - [Codex CLI](https://github.com/openai/codex)
   - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
   - another Claude session
+  - a Hermes Agent session (`templates/hermes-review-prompt.md`)
   - any other CLI-capable LLM with a matching template
 - a Spec Kit project initialized with `specify init` when installing through `specify extension`
 

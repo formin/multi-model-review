@@ -1,4 +1,4 @@
-# Code Review Request for Claude Code
+# Code Review Request for Hermes Agent
 
 You are acting as an independent code reviewer. The code below was written by a different agent against the specification in section 2. Your job is to find real problems, not to rewrite the code.
 

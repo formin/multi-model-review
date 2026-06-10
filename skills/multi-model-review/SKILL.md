@@ -1,6 +1,6 @@
 ---
 name: multi-model-review
-description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices. When available, it also drives execution through an optional work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) and falls back to its own subagents when those tools are absent. When a flow completes, it ends with a measured "Token, Headroom & RTK" report that states the RTK and Headroom token savings separately and lists work-assist tool usage.
+description: Use this skill when the user wants a cross-model Spec Kit workflow, including selecting detailed model options for development spec authoring, heavy spec authoring, actual implementation, automatic subagent routing, Headroom-aware context compression, and review, exporting a cross-model code review package, or invoking /speckit.multi-model-review.cross-review, /speckit.multi-model-review.spec-handoff, /speckit.multi-model-review.review-package, /speckit.multi-model-review.apply-review, or the legacy /multi-model-review:* commands. The skill creates portable markdown handoffs between spec-author, implementation, reviewer, and subagent-routed task slices. When available, it also drives execution through an optional work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) and falls back to its own subagents when those tools are absent. When a flow completes, it ends with a measured "Token, Headroom & RTK" report that states the RTK and Headroom token savings separately and lists work-assist tool usage. Review state follows the Harness-1 (pat-jj/harness-1) state-externalizing pattern: curated evidence, evidence links, and verification records persist as recoverable files under .cross-review/.
 license: MIT
 ---
 
@@ -238,6 +238,41 @@ Modes:
 
 Headroom is most useful for oversized raw blocks left after manual reduction: verbose `git diff`, logs, JSON tool output, search results, long rules files, large source excerpts, and RAG-like context dumps. Do not use Headroom as a reason to omit review-critical evidence from the manifest or focused excerpts. If the reviewer cannot access the same local Headroom store, treat CCR hashes as optional hints and keep the package independently reviewable.
 
+## Externalized review state (Harness-1 pattern)
+
+The `.cross-review/` directory is a state-externalizing harness in the sense of
+[pat-jj/harness-1](https://github.com/pat-jj/harness-1) ("Harness-1:
+Reinforcement Learning for Search Agents with State-Externalizing Harnesses",
+arXiv:2606.02373): recoverable state — candidate context, curated evidence,
+evidence links, verification records, and budget-aware context — lives in
+files, while each model keeps only the semantic decisions (what to inspect,
+what to curate into the package, which claims to verify, and when the evidence
+is sufficient). Apply it concretely:
+
+- **Curated evidence over raw dumps**: the review package is the curated
+  evidence set. Judge it by whether the evidence a reviewer needs made it in
+  (recall of review-critical context), not by raw size.
+- **Evidence links**: every finding should carry `location` plus an `evidence`
+  pointer to material reachable inside the package (diff excerpt, manifest
+  entry, or spec/plan/tasks/rules line). Ungroundable claims get lower
+  confidence, not invented support.
+- **Verification records**: during ingest, write each finding's outcome
+  (`accepted`, `rejected`, `applied`, `skipped`, plus the verifying command or
+  a one-line reason) to `verification_records` in the package `metadata.json`
+  so a later session can recover the review state from files alone.
+- **Budget-aware context**: compact-first reduction plus optional Headroom
+  compression keep the package inside the reviewer's context budget;
+  recoverable originals stay in local files and the CCR store, never only in
+  conversation history.
+- **Sufficiency as an explicit decision**: `Context sufficiency` is the
+  "is the evidence sufficient" gate. Reviewers escalate to
+  `needs-full-package` instead of guessing; builders rerun with `--full` or
+  `--paths` instead of re-reviewing blindly.
+
+Keep secrets out of state files. This layer is workflow design, not a
+compression layer: the completion token report still measures RTK and Headroom
+only.
+
 ## Completion token report (RTK + Headroom)
 
 Every `multi-model-review` flow ends by telling the user how many tokens the two compression layers actually saved. RTK reduces the shell output gathered while building a handoff (`git diff`, `git log`, grep, rules). Headroom compresses the large residual blocks that survive manual reduction. Report the two layers **separately** so the user can see what each one contributed; this is the same measured-reporting contract the companion `token-saver` skill uses.
@@ -338,7 +373,7 @@ When the work-assist orchestration layer is available, use omo or lazycodex for 
 - Optional `--headroom auto|off|required` override for a single review package
 - Reviewer mode:
   - `codex-mcp` implies `micro`
-  - `codex-auto`, `codex-cli`, `claude-code`, `gemini-cli` should default to `compact`
+  - `codex-auto`, `codex-cli`, `claude-code`, `gemini-cli`, `hermes` should default to `compact`
   - `--full` overrides to `full`
 
 ### 3. Resolve context compression
@@ -469,7 +504,7 @@ Special handling:
 - if `Context sufficiency = needs-full-package`, stop before making broad edits and recommend a `--full` or `--paths` rerun
 - never auto-apply a `critical` finding without explicit approval
 
-After summarizing applied versus skipped findings, finish the response with the **Completion token report**.
+After summarizing applied versus skipped findings, write each finding's outcome (`accepted`, `rejected`, `applied`, or `skipped`, plus the verifying command or a one-line reason) to `verification_records` in the package `metadata.json` (Harness-1 verification records), then finish the response with the **Completion token report**.
 
 ## Important constraints
 
@@ -482,6 +517,7 @@ After summarizing applied versus skipped findings, finish the response with the 
 - Subagents should not spawn subagents. Keep orchestration in the main conversation or slash command.
 - End every completed flow with the Completion token report. Report RTK and Headroom savings separately, from `rtk gain` and `headroom_stats`/`compressed_blocks` measurements only; never estimate a number, and mark `used=no` when a layer did not engage.
 - Treat the work-assist orchestration layer (omo, UltraWork, lazycodex, Superpowers) as optional. Use it when available, fall back to the `mmr-*` subagents or sequential execution otherwise, report it as usage only (never a savings number), and never pass secrets into its prompts.
+- Keep review state externalized and recoverable (Harness-1): the package directory plus `metadata.json` (including `verification_records`) is the durable record, and a new session resumes from those files, not from conversation memory.
 
 ## Related files
 
@@ -491,6 +527,7 @@ After summarizing applied versus skipped findings, finish the response with the 
 - `commands/apply-review.md`
 - `templates/spec-authoring-prompt.md`
 - `templates/review-report.md`
+- `templates/hermes-review-prompt.md`
 - `agents/mmr-context-scout.md`
 - `agents/mmr-implementation-worker.md`
 - `agents/mmr-heavy-planner.md`

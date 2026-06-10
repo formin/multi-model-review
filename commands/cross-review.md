@@ -247,6 +247,7 @@ Interactive `init` without model flags:
      - `codex-auto`: default
      - `codex-cli`: long-running reviews
      - `codex-mcp`: short MCP checks only
+   - other reviewers: `claude-code`, `gemini-cli`, `hermes`, or any custom ID with a matching `templates/<id>-review-prompt.md`
 
 9. Ask whether to enable automatic subagent routing.
    - default `auto`

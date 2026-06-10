@@ -27,6 +27,7 @@ Zero or more findings, numbered `F1`, `F2`, ...
 - **location**: `path/to/file.ext:LINE` (preferred) or `path/to/file.ext`
 - **summary**: one line
 - **detail**: 1-3 sentences with evidence from the diff, spec, plan, tasks, or relevant rules
+- **evidence**: optional pointer to the package material that grounds the finding (diff excerpt, manifest entry, or spec/plan/tasks/rules line) — Harness-1 evidence-link rule
 - **suggested_fix**: concrete suggestion, or `n/a`
 
 ### F2
