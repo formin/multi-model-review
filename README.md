@@ -70,6 +70,101 @@ Spec Kit is excellent at the single-agent flow:
 - the reviewer reads that package and writes `review-report.md`
 - the builder ingests the report and applies fixes
 
+## Spec Kit vs. `multi-model-review`
+
+> **This is not a replacement for Spec Kit — it is a Spec Kit extension.** The honest comparison is *Spec Kit on its own* vs. *Spec Kit with this extension installed*. The question is not "which one," it is "do I want the cross-model review loop on top."
+
+[GitHub Spec Kit](https://github.com/github/spec-kit) owns Spec-Driven Development: `/speckit.constitution` → `/speckit.specify` → `/speckit.clarify` → `/speckit.plan` → `/speckit.tasks` → `/speckit.implement`, plus `/speckit.analyze` and `/speckit.checklist` for quality gates. It works with 30+ agents — but you pick **one** agent, and that single model drives the whole lifecycle, including any self-review. There is no built-in cross-model review step.
+
+That single-agent design is exactly the gap this extension closes.
+
+| Dimension | Spec Kit alone | Spec Kit + `multi-model-review` |
+|-----------|----------------|----------------------------------|
+| SDD lifecycle (spec → plan → tasks → implement) | Owns it | Unchanged — still Spec Kit underneath |
+| Models per feature | One agent drives everything | Spec, implementation, and review can each be a **different** model |
+| Code review | The author model checks its own work (`/speckit.analyze`, `/speckit.checklist` are same-agent passes) | A **second** model reviews code it did not write |
+| Handoff between agents | Tied to one live session | Portable `spec.md` / `plan.md` / `tasks.md` / diff packages on disk |
+| Reviewer choice | n/a | Template-driven: Codex, Gemini, another Claude, Hermes, any CLI LLM |
+| Review token cost | Carries the whole build session | Compact-first packages + optional Headroom compression |
+| Finding hygiene | n/a | Confidence-gated, with a `Context sufficiency` escape hatch |
+| External calls | n/a | None hidden — you run the reviewer yourself |
+
+### Why add the cross-model loop?
+
+A model that reviews its own output tends to **rationalize** it: same priors, same blind spots, same rule interpretation that produced the bug in the first place. Spec Kit's `/speckit.analyze` and `/speckit.checklist` help, but they are the *same agent* checking its own artifacts for consistency and coverage — not an independent second opinion.
+
+A *different* model brings:
+
+- different priors
+- different bug sensitivity
+- a different read of the same spec and rules
+
+Spec Kit deliberately stays model-agnostic and single-agent. `multi-model-review` is the loop that makes "build with one model, review with another" a first-class, on-disk workflow.
+
+### Example: same feature, two workflows
+
+**Spec Kit alone** — one model, one session, self-review:
+
+```text
+/speckit.specify   "Add magic-link auth"
+/speckit.plan
+/speckit.tasks
+/speckit.implement
+# The same model that wrote the code is the one that "reviews" it —
+# and signs off on its own timing-unsafe token comparison.
+```
+
+**Spec Kit + `multi-model-review`** — Codex authors the spec, Sonnet implements, a fresh Codex session (with no build context) reviews:
+
+```text
+# One-time routing setup
+/speckit.multi-model-review.cross-review init \
+  --spec codex-5.5:xhigh@normal \
+  --dev sonnet-4.6@high \
+  --review codex-5.5:high@normal
+
+# 1. A strong reasoning model authors the durable artifacts
+/speckit.multi-model-review.spec-handoff 042-magic-link-auth --spec-model codex-5.5:xhigh@normal
+
+# 2. Implement with the configured dev model (no silent upgrade)
+/speckit.implement
+
+# 3. Export a compact, portable review package
+/speckit.multi-model-review.review-package 042-magic-link-auth
+```
+
+Run the reviewer yourself, in its own terminal — a different model that never saw the build session:
+
+```bash
+PKG=.cross-review/packages/20260421-1430-magic-link-auth
+codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
+```
+
+```text
+# 4. Ingest only the high-confidence findings and apply fixes
+/speckit.multi-model-review.apply-review
+```
+
+The reviewer catches what the builder rationalized:
+
+```markdown
+### F1
+- severity: critical
+- confidence: 92
+- location: src/auth/verify.ts:34
+- summary: Token comparison is not constant-time
+- suggested_fix: Use a constant-time comparison helper.
+```
+
+That finding came from a model that never saw the implementation session — which is the entire point.
+
+### When Spec Kit alone is enough
+
+- Solo prototypes and throwaway spikes, where a second opinion is not worth the round-trip.
+- You only have one model available.
+
+Reach for `multi-model-review` when correctness matters: security-sensitive changes, cross-cutting refactors, or anywhere "the author graded their own homework" is a risk you want to remove.
+
 ## Recommended model routing
 
 | Stage | Default | Notes |
