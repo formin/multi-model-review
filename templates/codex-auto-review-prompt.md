@@ -8,6 +8,7 @@ This file is self-contained. Do not rely on prior conversation state.
 >
 > - Small package: you may be called through MCP, so work quickly.
 > - Large package: you may be run through `codex exec -m <review_model> --file`, so you can review more thoroughly.
+> - Local OSS mode may run through `codex exec --oss -m <review_model> --file`; use the same review contract.
 > - If context is insufficient, say so using `Context sufficiency` instead of guessing.
 
 ## 1. Package profile

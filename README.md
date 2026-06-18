@@ -138,6 +138,9 @@ Run the reviewer yourself, in its own terminal — a different model that never 
 ```bash
 PKG=.cross-review/packages/20260421-1430-magic-link-auth
 codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
+
+# Local OSS reviewer via Codex CLI, after `oss_provider` is configured in Codex:
+codex exec --oss -m <local-model> --file $PKG/review-package.md > $PKG/review-report.md
 ```
 
 ```text
@@ -329,7 +332,7 @@ RTK (shell-output reduction) and Headroom (context compression) are reported sep
 |----------|----------|-----------------|
 | Claude | `templates/claude-review-prompt.md` | `claude -p "$(cat <pkg>/review-package.md)" > <pkg>/review-report.md` |
 | Codex (auto) | `templates/codex-auto-review-prompt.md` | Try MCP first, fall back to CLI on timeout |
-| Codex (CLI) | `templates/codex-cli-review-prompt.md` | `codex exec -m codex-5.5 --file <pkg>/review-package.md > <pkg>/review-report.md` |
+| Codex (CLI) | `templates/codex-cli-review-prompt.md` | `codex exec -m codex-5.5 --file <pkg>/review-package.md > <pkg>/review-report.md`; local: `codex exec --oss -m <local-model> --file ...` |
 | Codex (MCP) | `templates/codex-mcp-review-prompt.md` | Inline MCP call for tiny packages |
 | Gemini | `templates/gemini-review-prompt.md` | `gemini --file <pkg>/review-package.md > <pkg>/review-report.md` |
 
@@ -345,12 +348,31 @@ The `mcp__codex__codex` path is hard-limited to about 60 seconds, so non-trivial
 | `codex-cli` | `codex exec -m <review_model> --file ...` | longer reviews |
 | `codex-auto` | MCP first, CLI fallback | default |
 
+### Codex OSS/local providers
+
+Codex CLI can run against local OSS providers such as Ollama or LM Studio when Codex is invoked with `--oss`. Configure the default local provider in Codex `config.toml`:
+
+```toml
+oss_provider = "ollama" # or "lmstudio"
+```
+
+Then run the same review package through the local provider:
+
+```bash
+PKG=.cross-review/packages/20260421-1400-auth-rework
+codex exec --oss -m <local-model> --file $PKG/review-package.md > $PKG/review-report.md
+```
+
+`multi-model-review` keeps `spec_author_model`, `review_model`, and their raw model specs as workflow metadata. Codex runtime provider selection stays in Codex CLI configuration or invocation flags: `--oss`, `oss_provider`, `model_provider`, and `[model_providers.<id>]` are not extra model-axis values. Codex reserves the built-in provider IDs `openai`, `ollama`, and `lmstudio`; do not write those provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports them.
+
+When a local provider's native model ID contains `:`, preserve it as the model ID unless the suffix is one of this extension's known option axes. This avoids stripping local model tags from `codex exec --oss -m <local-model>`.
+
 ## Requirements
 
 - [Claude Code](https://claude.com/claude-code) 1.x
 - `git` on `PATH`
 - a reviewer model installed locally:
-  - [Codex CLI](https://github.com/openai/codex)
+  - [Codex CLI](https://github.com/openai/codex), using hosted models or local OSS providers configured in Codex
   - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
   - another Claude session
   - a Hermes Agent session (`templates/hermes-review-prompt.md`)
@@ -368,10 +390,10 @@ specify extension add --dev /path/to/multi-model-review
 specify extension list
 ```
 
-After a `v0.1.1` release is published, users can install directly from the release archive:
+After a `v0.1.2` release is published, users can install directly from the release archive:
 
 ```bash
-specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.1.zip
+specify extension add multi-model-review --from https://github.com/formin/multi-model-review/archive/refs/tags/v0.1.2.zip
 ```
 
 Registered Spec Kit command names:
@@ -452,6 +474,9 @@ Run the reviewer in a separate terminal. Example:
 ```bash
 PKG=.cross-review/packages/20260421-1400-auth-rework
 codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
+
+# Local OSS reviewer via Codex CLI:
+codex exec --oss -m <local-model> --file $PKG/review-package.md > $PKG/review-report.md
 ```
 
 Then ingest the report:

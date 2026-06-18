@@ -42,6 +42,7 @@ Parsing rules:
   - never change `normal` to `priority`
   - never change `high` workload to `max`
   - never replace the selected implementation model with a stronger model
+- For unknown/custom models, if the segment after `:` is not one of the known axis values for that provider, treat the whole string as the native model ID. This preserves local-provider model tags such as `<local-model>:<tag>`.
 - If a known provider receives an incompatible axis, stop and explain the valid forms.
 
 Provider mappings:
@@ -51,6 +52,13 @@ Provider mappings:
 | Codex | `codex-5.5`, `gpt-5.5` | `low`, `medium`, `high`, `xhigh`, `very-high` | `normal`, `fast`, `priority` |
 | Claude | `opus-4.7`, `sonnet-4.6`, `haiku-4.5`, `claude-*` | `standard`, `1m`, `1M` context when present | `low`, `normal`, `high`, `max` workload |
 | Gemini or custom | any other ID | provider-specific, preserved | provider-specific, preserved |
+
+Codex OSS/local provider rules:
+
+- Treat `--oss`, `oss_provider = "ollama"`, `oss_provider = "lmstudio"`, `model_provider`, and `[model_providers.<id>]` as Codex CLI runtime configuration, not as extra model spec axes.
+- Preserve local Codex model IDs, including native provider tags that contain `:`, as `raw` model specs in workflow metadata and command hints.
+- When the reviewer is `codex-cli` or `codex-auto`, mention the optional local command form: `codex exec --oss -m <review_model> --file ...`.
+- Do not materialize Codex provider IDs such as `openai`, `ollama`, `lmstudio`, or custom Codex provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports them.
 
 ## Subagent model routing
 
@@ -247,6 +255,7 @@ Interactive `init` without model flags:
      - `codex-auto`: default
      - `codex-cli`: long-running reviews
      - `codex-mcp`: short MCP checks only
+     - local OSS providers: configure Codex `oss_provider` or `model_provider` outside this extension and run the CLI path with `--oss`
    - other reviewers: `claude-code`, `gemini-cli`, `hermes`, or any custom ID with a matching `templates/<id>-review-prompt.md`
 
 9. Ask whether to enable automatic subagent routing.

@@ -163,6 +163,7 @@
         <li>separate model routing for spec authoring, implementation, subagent task slices, and review</li>
         <li>portable markdown package instead of shared session state</li>
         <li>compact-first packaging to reduce token cost</li>
+        <li>Codex CLI reviewers can use local OSS providers through <code>--oss</code></li>
         <li>confidence-gated findings for easier remediation</li>
       </ul>
     </section>
@@ -183,6 +184,12 @@
         </tbody>
       </table>
       <p>Detailed model specs use <code>&lt;model&gt;[:&lt;axis-a&gt;][@&lt;axis-b&gt;]</code>. Codex axes map to <code>reasoning</code> and <code>speed</code>; Claude axes map to <code>context</code> and <code>workload</code>.</p>
+    </section>
+
+    <section>
+      <h2>Codex local providers</h2>
+      <p>Codex CLI review and spec-author handoffs can run through local OSS providers such as Ollama or LM Studio when Codex is configured with <code>oss_provider</code> and invoked with <code>--oss</code>. Provider selection stays in Codex CLI configuration; the extension keeps the selected model string in handoff metadata.</p>
+      <pre><code>codex exec --oss -m &lt;local-model&gt; --file .cross-review/packages/&lt;pkg&gt;/review-package.md &gt; .cross-review/packages/&lt;pkg&gt;/review-report.md</code></pre>
     </section>
 
     <section>

@@ -164,6 +164,7 @@ When the work-assist orchestration layer is available, drive these steps through
    - Remind the user to write the model output to `spec-output.md`.
    - Print a command hint only when the local CLI is obvious:
      - `codex-5.5`: `codex exec -m codex-5.5 - < .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md > .cross-review/spec-handoffs/<pkg>/spec-output.md`
+     - Codex OSS/local provider: `codex exec --oss -m <local-model> - < .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md > .cross-review/spec-handoffs/<pkg>/spec-output.md`
      - `opus-4.7`: `claude --model opus-4.7 -p "$(cat .cross-review/spec-handoffs/<pkg>/spec-authoring-prompt.md)" > .cross-review/spec-handoffs/<pkg>/spec-output.md`
 
 9. Finish with the Completion token report.

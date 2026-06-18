@@ -7,6 +7,7 @@ This file is self-contained. Do not rely on prior conversation state.
 > Invocation mode: `codex-cli`
 >
 > You are running through `codex exec -m <review_model> --file`, so there is no 60-second MCP ceiling. Review thoroughly, but still respect the compact package design. If important context is missing, say so using `Context sufficiency`.
+> If invoked as `codex exec --oss -m <review_model> --file`, use the same review contract. The local provider is selected by Codex CLI configuration, not by this package.
 
 ## 1. Package profile
 

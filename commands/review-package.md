@@ -60,6 +60,8 @@ Parsing rules:
 - Normalize `xhigh` to legacy `intelligence=very-high` while preserving `reasoning=xhigh`.
 - Normalize `1m` to `1M`.
 - Do not silently upgrade or downgrade any axis.
+- For unknown/custom models, if the segment after `:` is not one of the known axis values for that provider, treat the whole string as the native model ID. This preserves local-provider model tags such as `<local-model>:<tag>`.
+- Treat Codex `--oss`, `oss_provider`, `model_provider`, and `[model_providers.<id>]` as CLI runtime settings, not model-axis values. Preserve local model IDs, including native provider tags that contain `:`, in metadata and keep provider selection in the command hint or Codex config.
 
 Review model guidance:
 
@@ -223,6 +225,7 @@ When the work-assist orchestration layer is available, use omo or lazycodex for 
    - Show the Headroom mode and whether compression was applied.
    - Show the selected review model raw string and structured options.
    - Show the exact reviewer command.
+   - For `codex-cli` and `codex-auto`, also show the local OSS alternative when useful: `codex exec --oss -m <review_model> --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md`.
    - Remind the user where to write `review-report.md`.
    - If the report later says `Context sufficiency: needs-full-package`, recommend:
      - `/multi-model-review:review-package --full`
@@ -246,9 +249,9 @@ When the work-assist orchestration layer is available, use omo or lazycodex for 
 
 | Reviewer ID | Invocation to print |
 |-------------|---------------------|
-| `codex-auto` | Try MCP for very small packages, otherwise fall back to `codex exec -m <review_model> --file ...` |
+| `codex-auto` | Try MCP for very small packages, otherwise fall back to `codex exec -m <review_model> --file ...`; for local providers use `codex exec --oss -m <review_model> --file ...` |
 | `codex-mcp` | Call the `mcp__codex__codex` tool inline for tiny packages only |
-| `codex-cli` | `codex exec -m <review_model> --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md` |
+| `codex-cli` | `codex exec -m <review_model> --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md`; local: `codex exec --oss -m <review_model> --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md` |
 | `claude-code` | `claude -p "$(cat .cross-review/packages/<pkg>/review-package.md)" > .cross-review/packages/<pkg>/review-report.md` |
 | `gemini-cli` | `gemini --file .cross-review/packages/<pkg>/review-package.md > .cross-review/packages/<pkg>/review-report.md` |
 | `hermes` | Open a Hermes Agent session, provide `.cross-review/packages/<pkg>/review-package.md`, and save the reply as `.cross-review/packages/<pkg>/review-report.md` |

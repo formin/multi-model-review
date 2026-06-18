@@ -17,6 +17,7 @@ Activate when the user:
 - asks to choose or record the model used for actual implementation
 - asks to split work across subagents or automatically choose models for delegated tasks
 - wants a second opinion from Codex, Gemini, Claude, or another CLI model
+- asks to use Codex OSS mode, Ollama, LM Studio, or another local Codex provider for spec authoring or review
 - mentions Spec Kit artifacts in a review context
 - gives detailed model specs such as `codex-5.5:xhigh@normal`, `opus-4.7:1m@max`, `sonnet-4.6@high`, or `codex-5.5:high@priority`
 - invokes `/speckit.multi-model-review.cross-review`, `/speckit.multi-model-review.spec-handoff`, `/speckit.multi-model-review.review-package`, `/speckit.multi-model-review.apply-review`, or the legacy `/multi-model-review:*` commands
@@ -137,12 +138,20 @@ Provider mappings:
 - Gemini or custom:
   - preserve provider-specific axes without inventing mappings
 
+Codex OSS/local provider handling:
+
+- Treat Codex `--oss`, `oss_provider`, `model_provider`, and `[model_providers.<id>]` as Codex CLI runtime configuration, not as extra values in the model spec grammar.
+- When the user asks for Ollama, LM Studio, or another local OSS Codex provider, keep the selected model string in handoff metadata and print command hints with `codex exec --oss -m <model>`.
+- For custom Codex providers, assume the user has configured Codex `config.toml`; preserve the raw model and note that provider selection happens outside this extension.
+- Do not write Codex provider IDs such as `openai`, `ollama`, `lmstudio`, or custom Codex provider IDs into Claude Code subagent frontmatter unless the local Claude Code installation explicitly supports them.
+
 Parsing rules:
 
 - Preserve the original string as `raw`.
 - Normalize `xhigh` to legacy display `intelligence=very-high`, but keep `reasoning=xhigh` in `model_defaults`.
 - Normalize `1m` to `1M`.
 - Normalize `sonnet-4.6` to `claude-sonnet-4.6`.
+- For unknown/custom models, if the segment after `:` is not one of the known axis values for that provider, treat the whole string as the native model ID. This preserves local-provider model tags such as `<local-model>:<tag>`.
 - Do not silently upgrade or downgrade any axis.
 - Do not replace the selected implementation model with a stronger model unless the user explicitly requests it.
 

@@ -6,6 +6,8 @@ You are acting as an independent code reviewer. The code below was written by a 
 
 This file is self-contained. Do not rely on prior conversation state.
 
+If invoked as `codex exec --oss -m <review_model> --file`, use the same review contract. The local provider is selected by Codex CLI configuration, not by this package.
+
 ## 1. Package profile
 
 - profile: `{{PACKAGE_PROFILE}}`

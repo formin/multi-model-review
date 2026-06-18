@@ -7,6 +7,7 @@ Step-by-step walkthrough for `multi-model-review`.
 - Claude Code installed and authenticated
 - `git` on `PATH`
 - at least one reviewer model installed locally
+- Optional: Codex CLI configured for hosted models or local OSS providers such as Ollama or LM Studio
 - Spec Kit initialized with `specify init` when using the Spec Kit extension install path
 - Optional: Headroom MCP tools when you want Headroom-aware package compression
 
@@ -49,6 +50,12 @@ UI option mapping:
 | Claude model | `spec_author_model` or `implementation_model` | `claude-opus-4.7`, `claude-opus-4.7-1m`, `claude-sonnet-4.6`, `claude-haiku-4.5` |
 | Claude context | `context` | `standard`, `1M` |
 | Claude workload | `workload` | `low`, `normal`, `high`, `max` |
+
+Codex OSS/local provider notes:
+
+- Configure `oss_provider = "ollama"` or `oss_provider = "lmstudio"` in Codex `config.toml` when you want `--oss` to default to a local provider.
+- Keep `--oss`, `oss_provider`, `model_provider`, and `[model_providers.<id>]` in Codex CLI configuration or invocation flags. They are not additional values in the `<model>[:<axis-a>][@<axis-b>]` grammar.
+- Preserve local model names in `review_model` or `spec_author_model` metadata, including native provider tags that contain `:`, then run Codex CLI with `--oss`.
 
 Supported reviewer examples:
 
@@ -280,6 +287,7 @@ Examples:
 PKG=.cross-review/packages/20260421-1400-auth-rework
 
 codex exec -m codex-5.5 --file $PKG/review-package.md > $PKG/review-report.md
+codex exec --oss -m <local-model> --file $PKG/review-package.md > $PKG/review-report.md
 gemini --file $PKG/review-package.md > $PKG/review-report.md
 claude -p "$(cat $PKG/review-package.md)" > $PKG/review-report.md
 ```

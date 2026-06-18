@@ -26,7 +26,7 @@ You are on `feat/magic-link-auth`.
 | 3 | terminal | run Codex 5.5 on the spec handoff | `spec-output.md` |
 | 4 | Claude Sonnet 4.6 + plugin subagents | implement routed task slices and commit | source changes |
 | 5 | Claude | `/multi-model-review:review-package` | `review-package.md`, `metadata.json` |
-| 6 | terminal | `codex exec -m codex-5.5 --file ... > review-report.md` | `review-report.md` |
+| 6 | terminal | `codex exec -m codex-5.5 --file ... > review-report.md`, or `codex exec --oss -m <local-model> --file ...` for a configured local provider | `review-report.md` |
 | 7 | Claude | `/multi-model-review:apply-review` | fixes + `review-state.json` |
 | 8 | Claude or shell | commit fixes | updated branch |
 
@@ -119,6 +119,9 @@ Profile:
 
 Run the reviewer:
   codex exec -m codex-5.5 --file .cross-review/packages/20260421-1430-magic-link-auth/review-package.md > .cross-review/packages/20260421-1430-magic-link-auth/review-report.md
+
+Local OSS alternative:
+  codex exec --oss -m <local-model> --file .cross-review/packages/20260421-1430-magic-link-auth/review-package.md > .cross-review/packages/20260421-1430-magic-link-auth/review-report.md
 ```
 
 ## 4. Codex reviews it
